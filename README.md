@@ -1,0 +1,120 @@
+# 🛠️ Spares AI: Advanced Inventory & Forecasting Dashboard
+
+A premium, high-performance web application designed for industrial spare parts management, inventory optimization, and demand forecasting. Built with **Next.js 15**, **TypeScript**, and **Tailwind CSS**, this dashboard provides a state-of-the-art interface for supply chain analysts.
+
+---
+
+## 🚀 Overview
+
+Spares AI bridges the gap between raw data and actionable insights. It allows users to track inventory levels, manage part pooling strategies, and predict future demand using sophisticated ARIMA models. The application is built with a focus on **Visual Excellence**, **Responsive Design**, and **User Experience**.
+
+### Key Modules:
+*   **📊 Overview**: High-level KPIs including stock value, active materials, and plant distribution.
+*   **🏊 Pool Management**: Efficient tracking and management of part pools with advanced filtering and search.
+*   **🔍 Pool Candidates**: Algorithmic identification of materials suitable for pooling to reduce inventory costs.
+*   **📈 Demand Forecasting**: Interactive ARIMA-based forecasting with historical data visualization and projection tables.
+*   **📦 Inventory**: Comprehensive material master data management.
+
+---
+
+## 💻 Tech Stack
+
+### Frontend Core
+*   **Framework**: [Next.js 15+](https://nextjs.org/) (App Router)
+*   **Language**: [TypeScript](https://www.typescriptlang.org/)
+*   **Styling**: [Tailwind CSS 4](https://tailwindcss.com/)
+*   **Icons**: [Lucide React](https://lucide.dev/)
+
+### UI & Visualization
+*   **Components**: [Shadcn UI](https://ui.shadcn.com/) (Radix UI)
+*   **Charts**: [Recharts](https://recharts.org/)
+*   **Animations**: Tailwind transitions & Framer-inspired micro-interactions
+
+### Data & API
+*   **Client**: [Axios](https://axios-http.com/)
+*   **State Management**: React Hooks (useState, useMemo, useEffect)
+*   **Backend Support**: FastAPI (Python) - *Managed in separate repository*
+
+---
+
+## 🛠️ Getting Started
+
+### Prerequisites
+*   Node.js 18.0 or higher
+*   npm / yarn / pnpm
+
+### Installation
+
+1.  Clone the repository:
+    ```bash
+    git clone https://github.com/your-repo/spares-app.git
+    cd spares-app
+    ```
+
+2.  Install dependencies:
+    ```bash
+    npm install
+    ```
+
+3.  Configure Environment Variables:
+    Create a `.env.local` file in the root directory:
+    ```env
+    NEXT_PUBLIC_API_URL=http://localhost:8000
+    ```
+
+4.  Run the development server:
+    ```bash
+    npm run dev
+    ```
+
+5.  Open [http://localhost:3000](http://localhost:3000) to view the application.
+
+---
+
+## 📂 Project Structure
+
+```text
+spares-app/
+├── app/                # Next.js App Router (Pages & Layouts)
+│   ├── forecast/       # Demand Forecasting module
+│   ├── inventory/      # Inventory management pages
+│   ├── pool/           # Pool management & candidate logic
+│   └── layout.tsx      # Root layout with Sidebar & Providers
+├── components/         # Reusable UI components
+│   ├── ui/             # Shadcn base components
+│   ├── sidebar.tsx     # Persistent navigation system
+│   └── ...
+├── lib/                # Shared utilities & helpers
+│   └── utils.ts        # Tailwind merge & cn utility
+├── public/             # Static assets (images, icons)
+└── package.json        # Project dependencies & scripts
+```
+
+---
+
+## ✨ Features & Design
+
+### Premium Aesthetics
+The application features a **Sleek Dark Mode** by default, utilizing:
+*   **Glassmorphism**: Subtle blurs and translucent backgrounds for a modern "premium" feel.
+*   **Dynamic Layouts**: Responsive grid systems that adapt from mobile to ultra-wide displays.
+*   **Micro-Animations**: Hover effects, smooth transitions, and loading skeletons to keep the UI feeling alive.
+
+### Optimized Data Loading
+*   **Server-Side Search**: Material selection dropdowns use server-side debounced searching to handle thousands of records with zero lag.
+*   **Lazy Loading**: Components only fetch data when needed to minimize initial load times.
+
+---
+
+## 🤝 Contributing
+
+1.  Create a Feature Branch.
+2.  Follow the [TypeScript Style Guide](https://google.github.io/styleguide/tsguide.html).
+3.  Ensure all UI changes are compatible with both light and dark modes.
+4.  Submit a Pull Request for review.
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License - see the LICENSE file for details.

@@ -60,11 +60,11 @@ const navItems = [
   //   href: "/users",
   //   icon: Users,
   // },
-  // {
-  //   name: "Settings",
-  //   href: "/settings",
-  //   icon: Settings,
-  // },
+  {
+    name: "Admin",
+    href: "/admin",
+    icon: Settings,
+  },
 ];
 
 export function Sidebar() {

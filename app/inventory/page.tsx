@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import axios from "axios";
+import * as XLSX from "xlsx";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -21,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, ChevronLeft, ChevronRight, Download, Network } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, Download, Network, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type DistItem = {
@@ -42,15 +43,14 @@ type KPIs = {
 };
 
 export default function InventoryDistributionPage() {
-  const [items, setItems] = useState<DistItem[]>([]);
+  const [allItems, setAllItems] = useState<DistItem[]>([]);
   const [kpis, setKpis] = useState<KPIs | null>(null);
   const [loading, setLoading] = useState(true);
-  
+
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [pageSize, setPageSize] = useState("50");
+  const [pageSize, setPageSize] = useState("10");
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalItems, setTotalItems] = useState(0);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -65,18 +65,11 @@ export default function InventoryDistributionPage() {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const res = await axios.get("http://localhost:8000/inventory/distribution", {
-          params: {
-            page: currentPage,
-            size: Number(pageSize),
-            search: debouncedSearch || undefined,
-          },
-        });
+        const res = await axios.get("http://localhost:8000/inventory/distribution");
 
         if (isMounted) {
-          setItems(res.data.items);
           setKpis(res.data.kpis);
-          setTotalItems(res.data.total);
+          setAllItems(res.data.items);
         }
       } catch (err) {
         console.error("Failed to fetch distribution data");
@@ -87,15 +80,59 @@ export default function InventoryDistributionPage() {
 
     fetchData();
     return () => { isMounted = false; };
-  }, [currentPage, pageSize, debouncedSearch]);
+  }, []);
 
+  const filteredItems = useMemo(() => {
+    if (!debouncedSearch) return allItems;
+    const lower = debouncedSearch.toLowerCase();
+    return allItems.filter((item) =>
+      item.material_code?.toLowerCase().includes(lower) ||
+      item.material_description?.toLowerCase().includes(lower)
+    );
+  }, [allItems, debouncedSearch]);
+
+  const items = useMemo(() => {
+    const size = Number(pageSize);
+    const start = (currentPage - 1) * size;
+    return filteredItems.slice(start, start + size);
+  }, [filteredItems, currentPage, pageSize]);
+
+  const totalItems = filteredItems.length;
   const totalPages = Math.ceil(totalItems / Number(pageSize));
+
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExport = async () => {
+    try {
+      setIsExporting(true);
+
+      const data = filteredItems.map((item: any) => ({
+        "Material Code": item.material_code,
+        "Description": item.material_description,
+        "Central Stock (GPC)": item.central_stock,
+        "Branch Stock": item.branch_stock,
+        "Total Stock": item.total_stock,
+        "Balance Status": item.balance_status,
+      }));
+
+      const ws = XLSX.utils.json_to_sheet(data);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Inventory Distribution");
+
+      const dateStr = new Date().toISOString().split('T')[0];
+      XLSX.writeFile(wb, `Inventory_Distribution_${dateStr}.xlsx`);
+    } catch (err) {
+      console.error("Export failed", err);
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   return (
     <div className="min-h-[calc(100vh-64px)] bg-gray-50/70 dark:bg-zinc-950 p-4 md:p-6 lg:p-8 font-sans">
       <div className="max-w-[1680px] mx-auto space-y-6">
-        
-        {/* Header */}
+
+        {/* HEADER */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-3">
@@ -107,9 +144,9 @@ export default function InventoryDistributionPage() {
             </p>
           </div>
           <div className="flex gap-3">
-            <Button variant="outline" size="sm" className="gap-2">
-              <Download className="w-4 h-4" />
-              Export
+            <Button variant="outline" size="sm" className="gap-2" onClick={handleExport} disabled={isExporting}>
+              {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+              {isExporting ? "Exporting..." : "Export"}
             </Button>
           </div>
         </div>
@@ -151,7 +188,7 @@ export default function InventoryDistributionPage() {
           ))}
         </div>
 
-        {/* Toolbar */}
+        {/* TOOLBAR */}
         <div className="flex items-center gap-3">
           <div className="relative w-full md:w-80">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -164,7 +201,7 @@ export default function InventoryDistributionPage() {
           </div>
         </div>
 
-        {/* Table */}
+        {/* MAIN TABLE */}
         <Card className="shadow-sm border-border overflow-hidden">
           <div className="overflow-x-auto relative">
             {loading && items.length > 0 && (
@@ -213,8 +250,8 @@ export default function InventoryDistributionPage() {
               </TableBody>
             </Table>
           </div>
-          
-          {/* Footer */}
+
+          {/* FOOTER */}
           <div className="border-t bg-muted/40 px-6 py-3 flex flex-col md:flex-row gap-3 md:items-center md:justify-between text-sm">
             <div>
               Showing {totalItems === 0 ? 0 : (currentPage - 1) * Number(pageSize) + 1}

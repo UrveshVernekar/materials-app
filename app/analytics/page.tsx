@@ -38,7 +38,6 @@ export default function AnalyticsPage() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [error, setError] = useState("");
 
-  // Debounce search input
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(searchQuery);
@@ -77,10 +76,10 @@ export default function AnalyticsPage() {
 
   const totalConsumption = data.reduce((acc, curr) => acc + curr.total_consumption, 0);
   const avgMonthly = data.length ? totalConsumption / data.length : 0;
-  
+
   const currentMonth = data.length ? data[data.length - 1].total_consumption : 0;
   const previousMonth = data.length > 1 ? data[data.length - 2].total_consumption : 0;
-  
+
   let momGrowth = 0;
   if (previousMonth > 0) {
     momGrowth = ((currentMonth - previousMonth) / previousMonth) * 100;
@@ -103,8 +102,8 @@ export default function AnalyticsPage() {
   return (
     <div className="min-h-[calc(100vh-64px)] bg-gray-50/50 dark:bg-[#0a0a0a] p-4 md:p-6 lg:p-8 font-sans">
       <div className="max-w-[1400px] mx-auto space-y-8">
-        
-        {/* Header Section */}
+
+        {/* HEADER */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold tracking-tight text-foreground">
@@ -114,7 +113,7 @@ export default function AnalyticsPage() {
               Track material consumption trends and seasonal behaviors
             </p>
           </div>
-          
+
           <div className="relative w-full md:w-80">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
@@ -133,7 +132,7 @@ export default function AnalyticsPage() {
           </div>
         )}
 
-        {/* KPI Cards */}
+        {/* KPIs */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6">
           <Card className="shadow-sm border-border/60 bg-gradient-to-br from-blue-50/50 to-transparent dark:from-blue-950/20">
             <CardContent className="p-6">
@@ -195,7 +194,7 @@ export default function AnalyticsPage() {
           </Card>
         </div>
 
-        {/* Charts Section */}
+        {/* CHARTS */}
         {loading ? (
           <div className="h-[400px] bg-muted/20 animate-pulse rounded-2xl border border-border/50 flex items-center justify-center">
             <div className="text-muted-foreground font-medium flex items-center gap-2">
@@ -205,8 +204,8 @@ export default function AnalyticsPage() {
           </div>
         ) : data.length > 0 ? (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            
-            {/* Area Chart */}
+
+            {/* AREA CHART */}
             <Card className="shadow-sm border-border/60 overflow-hidden">
               <CardHeader className="bg-muted/10 border-b border-border/30 pb-4">
                 <CardTitle className="text-lg">Consumption Timeline</CardTitle>
@@ -218,32 +217,32 @@ export default function AnalyticsPage() {
                     <AreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                       <defs>
                         <linearGradient id="colorConsumption" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
-                          <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                          <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                          <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
                         </linearGradient>
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#88888830" />
-                      <XAxis 
-                        dataKey="formatted_date" 
-                        axisLine={false} 
-                        tickLine={false} 
-                        tick={{ fontSize: 12, fill: '#888888' }} 
+                      <XAxis
+                        dataKey="formatted_date"
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fontSize: 12, fill: '#888888' }}
                         dy={10}
                       />
-                      <YAxis 
-                        axisLine={false} 
-                        tickLine={false} 
+                      <YAxis
+                        axisLine={false}
+                        tickLine={false}
                         tick={{ fontSize: 12, fill: '#888888' }}
                         tickFormatter={(value) => value >= 1000 ? `${(value / 1000).toFixed(1)}k` : value}
                       />
                       <RechartsTooltip content={<CustomTooltip />} />
-                      <Area 
-                        type="monotone" 
-                        dataKey="total_consumption" 
-                        stroke="#3b82f6" 
+                      <Area
+                        type="monotone"
+                        dataKey="total_consumption"
+                        stroke="#3b82f6"
                         strokeWidth={3}
-                        fillOpacity={1} 
-                        fill="url(#colorConsumption)" 
+                        fillOpacity={1}
+                        fill="url(#colorConsumption)"
                       />
                     </AreaChart>
                   </ResponsiveContainer>
@@ -251,7 +250,7 @@ export default function AnalyticsPage() {
               </CardContent>
             </Card>
 
-            {/* Bar Chart */}
+            {/* BAR CHART */}
             <Card className="shadow-sm border-border/60 overflow-hidden">
               <CardHeader className="bg-muted/10 border-b border-border/30 pb-4">
                 <CardTitle className="text-lg">Monthly Volume Breakdown</CardTitle>
@@ -262,24 +261,24 @@ export default function AnalyticsPage() {
                   <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                     <BarChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#88888830" />
-                      <XAxis 
-                        dataKey="formatted_date" 
-                        axisLine={false} 
-                        tickLine={false} 
+                      <XAxis
+                        dataKey="formatted_date"
+                        axisLine={false}
+                        tickLine={false}
                         tick={{ fontSize: 12, fill: '#888888' }}
-                        dy={10} 
+                        dy={10}
                       />
-                      <YAxis 
-                        axisLine={false} 
-                        tickLine={false} 
+                      <YAxis
+                        axisLine={false}
+                        tickLine={false}
                         tick={{ fontSize: 12, fill: '#888888' }}
                         tickFormatter={(value) => value >= 1000 ? `${(value / 1000).toFixed(1)}k` : value}
                       />
                       <RechartsTooltip content={<CustomTooltip />} />
-                      <Bar 
-                        dataKey="total_consumption" 
-                        fill="#6366f1" 
-                        radius={[4, 4, 0, 0]} 
+                      <Bar
+                        dataKey="total_consumption"
+                        fill="#6366f1"
+                        radius={[4, 4, 0, 0]}
                         maxBarSize={50}
                       />
                     </BarChart>

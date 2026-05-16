@@ -6,8 +6,8 @@ import "./globals.css";
 const roboto = Roboto({
   variable: "--font-roboto",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"], // Add the weights you need
-  display: "swap", // Recommended for better performance
+  weight: ["400", "500", "600", "700"],
+  display: "swap",
 });
 
 import { Sidebar } from "@/components/sidebar";
@@ -15,7 +15,7 @@ import { Topbar } from "@/components/topbar";
 import { ThemeProvider } from "@/components/theme-provider";
 
 export const metadata: Metadata = {
-  title: "Materials App",
+  title: "IFB Materials App",
   description: "Materials App using Next.js",
 };
 

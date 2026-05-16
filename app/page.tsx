@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import axios from "axios";
+import * as XLSX from "xlsx";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -29,6 +30,7 @@ import {
   Download,
   ChevronLeft,
   ChevronRight,
+  Loader2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -71,20 +73,18 @@ export default function MaterialsDashboard() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [selectedRows, setSelectedRows] = useState<string[]>([]);
   const [tableDensity, setTableDensity] = useState<"default" | "compact">("default");
-  const [pageSize, setPageSize] = useState("50");
+  const [pageSize, setPageSize] = useState("10");
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalItems, setTotalItems] = useState(0);
 
-  const [items, setItems] = useState<Item[]>([]);
+  const [allItems, setAllItems] = useState<Item[]>([]);
   const [kpis, setKpis] = useState<KPIs | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // Debounce search query
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(searchQuery);
-      setCurrentPage(1); // Reset page on search
+      setCurrentPage(1);
     }, 500);
     return () => clearTimeout(timer);
   }, [searchQuery]);
@@ -97,19 +97,12 @@ export default function MaterialsDashboard() {
 
         const [kpisRes, tableRes] = await Promise.all([
           axios.get("http://localhost:8000/dashboard/kpis"),
-          axios.get(`http://localhost:8000/dashboard/table`, {
-            params: {
-              page: currentPage,
-              size: Number(pageSize),
-              search: debouncedSearch || undefined
-            }
-          })
+          axios.get(`http://localhost:8000/dashboard/table`)
         ]);
 
         if (isMounted) {
           setKpis(kpisRes.data);
-          setItems(tableRes.data.items);
-          setTotalItems(tableRes.data.total);
+          setAllItems(tableRes.data.items);
         }
       } catch (err) {
         if (isMounted) setError("Failed to fetch materials data");
@@ -120,7 +113,26 @@ export default function MaterialsDashboard() {
 
     fetchData();
     return () => { isMounted = false; };
-  }, [currentPage, pageSize, debouncedSearch]);
+  }, []);
+
+  const filteredItems = useMemo(() => {
+    if (!debouncedSearch) return allItems;
+    const lower = debouncedSearch.toLowerCase();
+    return allItems.filter((item) =>
+      item.material_code?.toLowerCase().includes(lower) ||
+      item.material_description?.toLowerCase().includes(lower) ||
+      item.vendor?.toLowerCase().includes(lower)
+    );
+  }, [allItems, debouncedSearch]);
+
+  const items = useMemo(() => {
+    const size = Number(pageSize);
+    const start = (currentPage - 1) * size;
+    return filteredItems.slice(start, start + size);
+  }, [filteredItems, currentPage, pageSize]);
+
+  const totalItems = filteredItems.length;
+  const totalPages = Math.ceil(totalItems / Number(pageSize));
 
   const toggleRowSelection = (id: string) => {
     setSelectedRows((prev) =>
@@ -129,14 +141,43 @@ export default function MaterialsDashboard() {
   };
 
   const toggleAll = () => {
-    if (selectedRows.length === items.length) {
+    if (selectedRows.length === items.length && items.length > 0) {
       setSelectedRows([]);
     } else {
       setSelectedRows(items.map((i) => i.material_code));
     }
   };
 
-  const totalPages = Math.ceil(totalItems / Number(pageSize));
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExport = async () => {
+    try {
+      setIsExporting(true);
+
+      const data = filteredItems.map((item: any) => ({
+        "Material Code": item.material_code,
+        "Description": item.material_description,
+        "Vendor": item.vendor,
+        "Current Stock": item.current_stock,
+        "Coverage (Days)": item.coverage_days,
+        "3M Avg": item.three_m_avg,
+        "12M Avg": item.twelve_m_avg,
+        "Unit Price": item.price,
+        "Status": item.status,
+      }));
+
+      const ws = XLSX.utils.json_to_sheet(data);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Materials");
+
+      const dateStr = new Date().toISOString().split('T')[0];
+      XLSX.writeFile(wb, `Materials_Overview_${dateStr}.xlsx`);
+    } catch (err) {
+      console.error("Export failed", err);
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   if (loading && items.length === 0 && !kpis) {
     return (
@@ -194,18 +235,15 @@ export default function MaterialsDashboard() {
               Overview of materials, stock levels, and coverage
             </p>
           </div>
-          {/* <div className="flex gap-3">
-            <Button variant="outline" size="sm" className="gap-2">
-              <Download className="w-4 h-4" />
-              Export
+          <div className="flex gap-3">
+            <Button variant="outline" size="sm" className="gap-2" onClick={handleExport} disabled={isExporting}>
+              {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+              {isExporting ? "Exporting..." : "Export"}
             </Button>
-            <Button size="sm" className="gap-2 bg-blue-600 hover:bg-blue-700">
-              Create PO
-            </Button>
-          </div> */}
+          </div>
         </div>
 
-        {/* Summary Cards */}
+        {/* KPI CARDS */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           {[
             {
@@ -260,7 +298,7 @@ export default function MaterialsDashboard() {
           ))}
         </div>
 
-        {/* Toolbar */}
+        {/* TOOLBAR */}
         <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
           <div className="flex flex-wrap gap-3">
             <div className="relative w-full sm:w-100">
@@ -295,7 +333,7 @@ export default function MaterialsDashboard() {
           </div>
         </div>
 
-        {/* Main Table */}
+        {/* MAIN TABLE */}
         <Card className="shadow-sm border-border overflow-hidden">
           <div className="overflow-x-auto relative">
             {loading && items.length > 0 && (

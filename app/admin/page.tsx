@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import axios from "axios";
+import api from "@/app/lib/api";
 import { useDropzone } from "react-dropzone";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,12 +13,16 @@ export default function AdminPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<"idle" | "success" | "error">("idle");
   const [uploadResult, setUploadResult] = useState<{ materials_count?: number; monthly_records_count?: number; message?: string } | null>(null);
+  const [progress, setProgress] = useState(0);
+  const [progressMessage, setProgressMessage] = useState("");
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     if (acceptedFiles.length > 0) {
       setFile(acceptedFiles[0]);
       setUploadStatus("idle");
       setUploadResult(null);
+      setProgress(0);
+      setProgressMessage("");
     }
   }, []);
 
@@ -31,28 +35,58 @@ export default function AdminPage() {
     maxFiles: 1,
   });
 
+  const pollStatus = async (taskId: string) => {
+    try {
+      const res = await api.get(`/admin/upload/status/${taskId}`);
+      setProgress(res.data.progress);
+      setProgressMessage(res.data.message);
+
+      if (res.data.status === "completed") {
+        setUploadResult({
+          message: res.data.message,
+          materials_count: res.data.materials_count,
+          monthly_records_count: res.data.monthly_records_count
+        });
+        setUploadStatus("success");
+        setIsUploading(false);
+      } else if (res.data.status === "failed") {
+        setUploadResult({ message: res.data.error || "Import failed" });
+        setUploadStatus("error");
+        setIsUploading(false);
+      } else {
+        // Continue polling
+        setTimeout(() => pollStatus(taskId), 1000);
+      }
+    } catch (err: any) {
+      setUploadResult({ message: "Failed to fetch status" });
+      setUploadStatus("error");
+      setIsUploading(false);
+    }
+  };
+
   const handleUpload = async () => {
     if (!file) return;
 
     setIsUploading(true);
     setUploadStatus("idle");
+    setProgress(0);
+    setProgressMessage("Starting upload...");
 
     const formData = new FormData();
     formData.append("file", file);
 
     try {
-      const res = await axios.post("http://localhost:8000/admin/upload", formData, {
+      const res = await api.post(`/admin/upload`, formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
       });
-      setUploadResult(res.data);
-      setUploadStatus("success");
+      const taskId = res.data.task_id;
+      pollStatus(taskId);
     } catch (err: any) {
       console.error(err);
       setUploadResult({ message: err.response?.data?.detail || "An unexpected error occurred during import." });
       setUploadStatus("error");
-    } finally {
       setIsUploading(false);
     }
   };
@@ -151,6 +185,22 @@ export default function AdminPage() {
                 )}
               </Button>
             </div>
+
+            {/* PROGRESS BAR */}
+            {isUploading && (
+              <div className="space-y-2 mt-4 p-4 rounded-xl border border-blue-100 bg-blue-50/50 dark:border-blue-900/50 dark:bg-blue-950/20">
+                <div className="flex justify-between text-sm font-medium text-blue-700 dark:text-blue-300">
+                  <span>{progressMessage}</span>
+                  <span>{progress}%</span>
+                </div>
+                <div className="w-full bg-blue-200/50 dark:bg-blue-900/40 rounded-full h-2.5 overflow-hidden">
+                  <div
+                    className="bg-blue-600 dark:bg-blue-500 h-2.5 rounded-full transition-all duration-500 ease-out"
+                    style={{ width: `${progress}%` }}
+                  ></div>
+                </div>
+              </div>
+            )}
 
             {/* STATUS MESSAGES */}
             {uploadStatus === "success" && uploadResult && (

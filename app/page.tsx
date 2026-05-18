@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import axios from "axios";
+import api from "@/app/lib/api";
 import * as XLSX from "xlsx";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -96,8 +96,8 @@ export default function MaterialsDashboard() {
         setLoading(true);
 
         const [kpisRes, tableRes] = await Promise.all([
-          axios.get("http://localhost:8000/dashboard/kpis"),
-          axios.get(`http://localhost:8000/dashboard/table`)
+          api.get("/dashboard/kpis"),
+          api.get(`/dashboard/table`)
         ]);
 
         if (isMounted) {

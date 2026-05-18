@@ -168,14 +168,14 @@ export function Sidebar() {
           </nav>
         </div>
 
-        {/* Footer Section (Optional - can be extended later) */}
-        <div className="border-t border-border p-4">
+        {/* Footer Section */}
+        {/* <div className="border-t border-border p-4">
           {!isCollapsed && (
             <div className="text-xs text-muted-foreground px-3">
               v2.4.1 • Goa Region
             </div>
           )}
-        </div>
+        </div> */}
       </aside>
     </TooltipProvider>
   );

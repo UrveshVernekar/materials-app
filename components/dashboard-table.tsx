@@ -318,15 +318,6 @@ export function DashboardTable({
           >
             <TableHeader className="bg-muted/50 sticky top-0 z-10">
               <TableRow>
-                {renderHeader(
-                  "selection",
-                  <Checkbox
-                    checked={selectedRows.length === items.length && items.length > 0}
-                    onCheckedChange={toggleAll}
-                  />,
-                  "left",
-                  "pl-4"
-                )}
                 {renderHeader("material_code", "Material Code")}
                 {renderHeader("material_description", "Description")}
                 {renderHeader("vendor", "Vendor")}
@@ -340,6 +331,19 @@ export function DashboardTable({
                 {/* {renderHeader("twelve_m_avg", "12M Avg", "right")} */}
                 {renderHeader("price", "Price", "right")}
                 {renderHeader("status", "Status", "center")}
+                <TableHead
+                  className={cn(
+                    "font-medium text-muted-foreground py-4 relative group select-none overflow-hidden",
+                    "text-right",
+                  )}
+                >
+                  <div className="truncate pr-2">Prediction June</div>
+                  <div
+                    onPointerDown={(e) => startResize(e, 'prediction_june')}
+                    onClick={(e) => e.stopPropagation()}
+                    className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-primary/50 active:bg-primary z-10 select-none group-hover:bg-muted-foreground/30 transition-colors"
+                  />
+                </TableHead>
               </TableRow>
             </TableHeader>
 
@@ -364,14 +368,6 @@ export function DashboardTable({
                     )}
                     onClick={() => onSelectMaterial(item)}
                   >
-                    {!hiddenColumns.includes("selection") && (
-                      <TableCell className="pl-4 truncate" onClick={(e) => e.stopPropagation()}>
-                        <Checkbox
-                          checked={selectedRows.includes(item.material_code)}
-                          onCheckedChange={() => toggleRowSelection(item.material_code)}
-                        />
-                      </TableCell>
-                    )}
                     {!hiddenColumns.includes("material_code") && (
                       <TableCell className="font-medium truncate">{item.material_code}</TableCell>
                     )}

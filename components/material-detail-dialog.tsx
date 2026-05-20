@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import api from "@/app/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { X, Info, Loader2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { X, Info, Loader2, Plus, Edit, Calendar } from "lucide-react";
 import {
   AreaChart,
   Area,
@@ -13,12 +14,17 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { cn } from "@/lib/utils";
-import { Item, TrendData } from "@/app/types";
+import { Item, TrendData, PurchaseOrder } from "@/app/types";
 
 interface MaterialDetailDialogProps {
   selectedMaterial: Item | null;
   onClose: () => void;
 }
+
+const MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December"
+];
 
 export function MaterialDetailDialog({
   selectedMaterial,
@@ -28,10 +34,53 @@ export function MaterialDetailDialog({
   const [loadingTrend, setLoadingTrend] = useState(false);
   const [trendError, setTrendError] = useState("");
 
+  // Tab State
+  const [activeTab, setActiveTab] = useState<"overview" | "purchase_orders">("overview");
+
+  // Purchase Orders State
+  const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
+  const [loadingPOs, setLoadingPOs] = useState(false);
+  const [poError, setPoError] = useState("");
+
+  // PO Form State
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingPO, setEditingPO] = useState<PurchaseOrder | null>(null);
+  const [formError, setFormError] = useState("");
+  const [formSuccess, setFormSuccess] = useState("");
+  const [formData, setFormData] = useState({
+    po_number: "",
+    order_qty: 0,
+    receive_qty: 0,
+    year: new Date().getFullYear(),
+    month: new Date().getMonth() + 1,
+  });
+
+  const fetchPurchaseOrders = async () => {
+    if (!selectedMaterial) return;
+    try {
+      setLoadingPOs(true);
+      setPoError("");
+      const res = await api.get("/purchase_orders/", {
+        params: { material_code: selectedMaterial.material_code },
+      });
+      setPurchaseOrders(res.data.items || []);
+    } catch (err) {
+      setPoError("Failed to fetch purchase orders.");
+    } finally {
+      setLoadingPOs(false);
+    }
+  };
+
   useEffect(() => {
     if (!selectedMaterial) {
       setTrendData([]);
       setTrendError("");
+      setPurchaseOrders([]);
+      setActiveTab("overview");
+      setIsFormOpen(false);
+      setEditingPO(null);
+      setFormError("");
+      setFormSuccess("");
       return;
     }
 
@@ -58,12 +107,128 @@ export function MaterialDetailDialog({
     };
 
     fetchTrend();
+    setActiveTab("overview");
+    setIsFormOpen(false);
+    setEditingPO(null);
+    setFormError("");
+    setFormSuccess("");
+
     return () => {
       isMounted = false;
     };
   }, [selectedMaterial]);
 
+  // Fetch purchase orders when PO tab becomes active
+  useEffect(() => {
+    if (selectedMaterial && activeTab === "purchase_orders") {
+      fetchPurchaseOrders();
+    }
+  }, [selectedMaterial, activeTab]);
+
   if (!selectedMaterial) return null;
+
+  const handleOpenAddForm = () => {
+    setFormData({
+      po_number: "",
+      order_qty: 0,
+      receive_qty: 0,
+      year: new Date().getFullYear(),
+      month: new Date().getMonth() + 1,
+    });
+    setEditingPO(null);
+    setFormError("");
+    setFormSuccess("");
+    setIsFormOpen(true);
+  };
+
+  const handleOpenEditForm = (po: PurchaseOrder) => {
+    setFormData({
+      po_number: po.po_number,
+      order_qty: Number(po.order_qty),
+      receive_qty: Number(po.receive_qty),
+      year: po.year,
+      month: po.month,
+    });
+    setEditingPO(po);
+    setFormError("");
+    setFormSuccess("");
+    setIsFormOpen(true);
+  };
+
+  const handleSubmitPO = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormError("");
+    setFormSuccess("");
+
+    if (!formData.po_number.trim()) {
+      setFormError("PO Number is required");
+      return;
+    }
+    if (formData.order_qty < 0) {
+      setFormError("Order quantity must be non-negative");
+      return;
+    }
+    if (formData.receive_qty < 0) {
+      setFormError("Receive quantity must be non-negative");
+      return;
+    }
+    if (Number(formData.receive_qty) > Number(formData.order_qty)) {
+      setFormError("Receive quantity cannot exceed order quantity");
+      return;
+    }
+    if (formData.year < 1900 || formData.year > 2100) {
+      setFormError("Year must be between 1900 and 2100");
+      return;
+    }
+    if (formData.month < 1 || formData.month > 12) {
+      setFormError("Month must be between 1 and 12");
+      return;
+    }
+
+    try {
+      if (editingPO) {
+        await api.put(`/purchase_orders/${editingPO.id}`, {
+          po_number: formData.po_number.trim(),
+          order_qty: Number(formData.order_qty),
+          receive_qty: Number(formData.receive_qty),
+          year: Number(formData.year),
+          month: Number(formData.month),
+        });
+        setFormSuccess("Purchase Order updated successfully!");
+        setTimeout(() => {
+          setIsFormOpen(false);
+          setEditingPO(null);
+          fetchPurchaseOrders();
+        }, 1000);
+      } else {
+        await api.post("/purchase_orders/", {
+          material_code: selectedMaterial.material_code,
+          po_number: formData.po_number.trim(),
+          order_qty: Number(formData.order_qty),
+          receive_qty: Number(formData.receive_qty),
+          year: Number(formData.year),
+          month: Number(formData.month),
+        });
+        setFormSuccess("Purchase Order added successfully!");
+        setTimeout(() => {
+          setIsFormOpen(false);
+          fetchPurchaseOrders();
+        }, 1000);
+      }
+    } catch (err: any) {
+      console.error("PO submit error:", err);
+      if (err.response && err.response.data && err.response.data.detail) {
+        const detail = err.response.data.detail;
+        if (detail.includes("already exists") || detail.includes("unique constraint")) {
+          setFormError(`Purchase Order "${formData.po_number}" already exists.`);
+        } else {
+          setFormError(detail);
+        }
+      } else {
+        setFormError("An error occurred. Please try again.");
+      }
+    }
+  };
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
@@ -117,7 +282,7 @@ export function MaterialDetailDialog({
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 rounded-full"
+            className="h-8 w-8 rounded-full cursor-pointer"
             onClick={onClose}
           >
             <X className="h-4 w-4" />
@@ -228,81 +393,350 @@ export function MaterialDetailDialog({
             </div>
           </div>
 
-          {/* CONSUMPTION TREND */}
-          <div className="space-y-3 pt-2">
-            <div className="flex items-center justify-between">
-              <h3 className="text-xs font-semibold tracking-wide uppercase text-muted-foreground">
-                Consumption Trend (Last 12 Months)
-              </h3>
-              {trendData.length > 0 && (
-                <span className="text-[10px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400 px-2.5 py-0.5 rounded-full">
-                  {trendData.length} {trendData.length === 1 ? "month" : "months"} of data
-                </span>
+          {/* TABS HEADER */}
+          <div className="flex border-b border-border -mx-6 px-6 pt-2">
+            <button
+              type="button"
+              onClick={() => setActiveTab("overview")}
+              className={cn(
+                "pb-3 text-xs font-bold uppercase tracking-wider transition-colors border-b-2 -mb-[1px] mr-6 focus:outline-none cursor-pointer",
+                activeTab === "overview"
+                  ? "border-primary text-primary"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              )}
+            >
+              Consumption Trend
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab("purchase_orders");
+                fetchPurchaseOrders();
+              }}
+              className={cn(
+                "pb-3 text-xs font-bold uppercase tracking-wider transition-colors border-b-2 -mb-[1px] focus:outline-none cursor-pointer",
+                activeTab === "purchase_orders"
+                  ? "border-primary text-primary"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              )}
+            >
+              Purchase Orders
+            </button>
+          </div>
+
+          {/* OVERVIEW TAB */}
+          {activeTab === "overview" && (
+            <div className="space-y-3 pt-2">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-semibold tracking-wide uppercase text-muted-foreground">
+                  Consumption Trend (Last 12 Months)
+                </h3>
+                {trendData.length > 0 && (
+                  <span className="text-[10px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400 px-2.5 py-0.5 rounded-full">
+                    {trendData.length} {trendData.length === 1 ? "month" : "months"} of data
+                  </span>
+                )}
+              </div>
+
+              {loadingTrend ? (
+                <div className="h-[200px] bg-muted/30 animate-pulse rounded-xl border flex items-center justify-center">
+                  <div className="text-muted-foreground text-xs font-medium flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                    Fetching consumption history...
+                  </div>
+                </div>
+              ) : trendError ? (
+                <div className="h-[200px] rounded-xl border border-destructive/20 bg-destructive/5 text-destructive flex items-center justify-center text-xs font-medium p-4">
+                  {trendError}
+                </div>
+              ) : trendData.length > 0 ? (
+                <div className="h-[200px] w-full min-w-0 border rounded-xl p-4 bg-muted/10">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={trendData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="dialogColorConsumption" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.25} />
+                          <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#88888820" />
+                      <XAxis
+                        dataKey="formatted_date"
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fontSize: 10, fill: '#888888' }}
+                        dy={8}
+                      />
+                      <YAxis
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fontSize: 10, fill: '#888888' }}
+                        tickFormatter={(val) => (val >= 1000 ? `${(val / 1000).toFixed(0)}k` : val)}
+                      />
+                      <RechartsTooltip content={<CustomTooltip />} />
+                      <Area
+                        type="monotone"
+                        dataKey="total_consumption"
+                        stroke="#3b82f6"
+                        strokeWidth={2}
+                        fillOpacity={1}
+                        fill="url(#dialogColorConsumption)"
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div className="h-[200px] border border-dashed rounded-xl flex flex-col items-center justify-center text-muted-foreground bg-muted/5">
+                  <Info className="w-6 h-6 opacity-25 mb-2" />
+                  <p className="text-xs font-semibold">No consumption trend data available</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    This material does not have recorded monthly records
+                  </p>
+                </div>
               )}
             </div>
+          )}
 
-            {loadingTrend ? (
-              <div className="h-[200px] bg-muted/30 animate-pulse rounded-xl border flex items-center justify-center">
-                <div className="text-muted-foreground text-xs font-medium flex items-center gap-2">
-                  <Loader2 className="w-4 h-4 animate-spin text-primary" />
-                  Fetching consumption history...
+          {/* PURCHASE ORDERS TAB */}
+          {activeTab === "purchase_orders" && (
+            <div className="space-y-4 pt-2">
+              {isFormOpen ? (
+                /* ADD / EDIT PO FORM */
+                <form onSubmit={handleSubmitPO} className="bg-muted/30 border rounded-xl p-5 space-y-4 animate-in fade-in duration-200">
+                  <div className="flex items-center justify-between border-b pb-2">
+                    <h3 className="text-sm font-bold text-foreground">
+                      {editingPO ? `Edit Purchase Order: ${editingPO.po_number}` : "Add Purchase Order"}
+                    </h3>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setIsFormOpen(false)}
+                      className="h-8 w-8 rounded-full p-0 cursor-pointer hover:bg-muted"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+
+                  {formError && (
+                    <div className="bg-destructive/10 border border-destructive/20 text-destructive text-xs font-medium p-3 rounded-lg flex items-center gap-2">
+                      <span className="text-sm">⚠️</span>
+                      <div>{formError}</div>
+                    </div>
+                  )}
+
+                  {formSuccess && (
+                    <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 dark:bg-emerald-950/30 dark:border-emerald-800 dark:text-emerald-400 text-xs font-medium p-3 rounded-lg flex items-center gap-2">
+                      <span className="text-sm">✅</span>
+                      <div>{formSuccess}</div>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* PO NUMBER */}
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-muted-foreground uppercase">
+                        PO Number *
+                      </label>
+                      <Input
+                        required
+                        placeholder="e.g. PO-890213"
+                        value={formData.po_number}
+                        onChange={(e) => setFormData({ ...formData, po_number: e.target.value })}
+                        className="bg-background"
+                      />
+                    </div>
+
+                    {/* ORDER QTY */}
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-muted-foreground uppercase">
+                        Order Qty *
+                      </label>
+                      <Input
+                        required
+                        type="number"
+                        min="0"
+                        step="any"
+                        placeholder="e.g. 1000"
+                        value={formData.order_qty || ""}
+                        onChange={(e) => setFormData({ ...formData, order_qty: Number(e.target.value) })}
+                        className="bg-background"
+                      />
+                    </div>
+
+                    {/* RECEIVE QTY */}
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-muted-foreground uppercase">
+                        Receive Qty
+                      </label>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="any"
+                        placeholder="e.g. 500"
+                        value={formData.receive_qty || "0"}
+                        onChange={(e) => setFormData({ ...formData, receive_qty: Number(e.target.value) })}
+                        className="bg-background"
+                      />
+                    </div>
+
+                    {/* YEAR & MONTH */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-muted-foreground uppercase">
+                          Year *
+                        </label>
+                        <select
+                          value={formData.year}
+                          onChange={(e) => setFormData({ ...formData, year: Number(e.target.value) })}
+                          className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs transition-colors focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring focus:border-primary"
+                        >
+                          {Array.from({ length: 11 }, (_, i) => new Date().getFullYear() - 5 + i).map((yr) => (
+                            <option key={yr} value={yr}>
+                              {yr}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-muted-foreground uppercase">
+                          Month *
+                        </label>
+                        <select
+                          value={formData.month}
+                          onChange={(e) => setFormData({ ...formData, month: Number(e.target.value) })}
+                          className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs transition-colors focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring focus:border-primary"
+                        >
+                          {MONTH_NAMES.map((name, idx) => (
+                            <option key={idx + 1} value={idx + 1}>
+                              {name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2 pt-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setIsFormOpen(false)}
+                      className="cursor-pointer"
+                    >
+                      Cancel
+                    </Button>
+                    <Button type="submit" size="sm" className="cursor-pointer">
+                      {editingPO ? "Save Changes" : "Create PO"}
+                    </Button>
+                  </div>
+                </form>
+              ) : (
+                /* PO LIST */
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-xs font-semibold tracking-wide uppercase text-muted-foreground">
+                      Purchase Orders
+                    </h3>
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={handleOpenAddForm}
+                      className="h-8 gap-1 cursor-pointer text-xs font-semibold px-3"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      Add PO
+                    </Button>
+                  </div>
+
+                  {loadingPOs ? (
+                    <div className="h-[150px] border rounded-xl flex items-center justify-center bg-muted/5">
+                      <div className="text-muted-foreground text-xs font-medium flex items-center gap-2">
+                        <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                        Loading purchase orders...
+                      </div>
+                    </div>
+                  ) : poError ? (
+                    <div className="h-[150px] rounded-xl border border-destructive/20 bg-destructive/5 text-destructive flex items-center justify-center text-xs font-medium p-4">
+                      {poError}
+                    </div>
+                  ) : purchaseOrders.length > 0 ? (
+                    <div className="border rounded-xl overflow-hidden bg-background">
+                      <table className="w-full text-left text-xs border-collapse">
+                        <thead>
+                          <tr className="bg-muted/40 border-b border-border text-muted-foreground font-semibold">
+                            <th className="p-3">PO Number</th>
+                            <th className="p-3">Period</th>
+                            <th className="p-3 text-right">Order Qty</th>
+                            <th className="p-3 text-right">Recv Qty</th>
+                            <th className="p-3 text-center">Status</th>
+                            <th className="p-3 text-right">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border">
+                          {purchaseOrders.map((po) => {
+                            const diff = Number(po.order_qty) - Number(po.receive_qty);
+                            const isCompleted = diff <= 0;
+                            const isNew = Number(po.receive_qty) === 0;
+                            return (
+                              <tr key={po.id} className="hover:bg-muted/30 transition-colors">
+                                <td className="p-3 font-semibold text-foreground">{po.po_number}</td>
+                                <td className="p-3 text-muted-foreground">
+                                  {MONTH_NAMES[po.month - 1]} {po.year}
+                                </td>
+                                <td className="p-3 text-right font-medium">{po.order_qty.toLocaleString()}</td>
+                                <td className="p-3 text-right font-medium">{po.receive_qty.toLocaleString()}</td>
+                                <td className="p-3 text-center">
+                                  <Badge
+                                    variant="secondary"
+                                    className={cn(
+                                      "text-[10px] font-semibold px-2 py-0.5",
+                                      isCompleted && "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400",
+                                      isNew && "bg-amber-100 text-amber-800 dark:bg-amber-950/30 dark:text-amber-400",
+                                      !isCompleted && !isNew && "bg-blue-100 text-blue-800 dark:bg-blue-950/30 dark:text-blue-400"
+                                    )}
+                                  >
+                                    {isCompleted ? "Completed" : isNew ? "Open" : "Partial"}
+                                  </Badge>
+                                </td>
+                                <td className="p-3 text-right">
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7 rounded-md cursor-pointer hover:bg-muted"
+                                    onClick={() => handleOpenEditForm(po)}
+                                    title="Edit PO"
+                                  >
+                                    <Edit className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground" />
+                                  </Button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="h-[150px] border border-dashed rounded-xl flex flex-col items-center justify-center text-muted-foreground bg-muted/5">
+                      <Calendar className="w-6 h-6 opacity-25 mb-2" />
+                      <p className="text-xs font-semibold">No purchase orders found</p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        Add a purchase order using the button above.
+                      </p>
+                    </div>
+                  )}
                 </div>
-              </div>
-            ) : trendError ? (
-              <div className="h-[200px] rounded-xl border border-destructive/20 bg-destructive/5 text-destructive flex items-center justify-center text-xs font-medium p-4">
-                {trendError}
-              </div>
-            ) : trendData.length > 0 ? (
-              <div className="h-[200px] w-full min-w-0 border rounded-xl p-4 bg-muted/10">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={trendData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="dialogColorConsumption" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.25} />
-                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#88888820" />
-                    <XAxis
-                      dataKey="formatted_date"
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fontSize: 10, fill: '#888888' }}
-                      dy={8}
-                    />
-                    <YAxis
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fontSize: 10, fill: '#888888' }}
-                      tickFormatter={(val) => (val >= 1000 ? `${(val / 1000).toFixed(0)}k` : val)}
-                    />
-                    <RechartsTooltip content={<CustomTooltip />} />
-                    <Area
-                      type="monotone"
-                      dataKey="total_consumption"
-                      stroke="#3b82f6"
-                      strokeWidth={2}
-                      fillOpacity={1}
-                      fill="url(#dialogColorConsumption)"
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            ) : (
-              <div className="h-[200px] border border-dashed rounded-xl flex flex-col items-center justify-center text-muted-foreground bg-muted/5">
-                <Info className="w-6 h-6 opacity-25 mb-2" />
-                <p className="text-xs font-semibold">No consumption trend data available</p>
-                <p className="text-[11px] text-muted-foreground mt-0.5">
-                  This material does not have recorded monthly records
-                </p>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* FOOTER */}
         <div className="flex items-center justify-end p-5 border-t bg-muted/10">
-          <Button onClick={onClose} size="sm">
+          <Button onClick={onClose} size="sm" className="cursor-pointer">
             Close Details
           </Button>
         </div>

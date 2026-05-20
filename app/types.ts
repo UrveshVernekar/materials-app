@@ -29,3 +29,16 @@ export type KPIs = {
   avg_coverage_days: number;
   obsolete_count: number;
 };
+
+export type PurchaseOrder = {
+  id: number;
+  material_code: string;
+  po_number: string;
+  order_qty: number;
+  receive_qty: number;
+  year: number;
+  month: number;
+  period_date?: string;
+  created_at?: string;
+  updated_at?: string;
+};

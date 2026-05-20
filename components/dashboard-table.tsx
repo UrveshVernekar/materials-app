@@ -60,19 +60,31 @@ export function DashboardTable({
 
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>({
     selection: 48,
-    material_code: 160,
-    material_description: 280,
-    vendor: 180,
+    // material_code: 160,
+    material_code: 90,
+    // material_description: 280,
+    material_description: 200,
+    vendor: 50,
     machine_population: 170,
-    current_stock: 140,
+    // current_stock: 140,
+    current_stock: 80,
     coverage_days: 140,
     lead_time: 110,
     delta: 95,
     total_lead_time: 130,
     three_m_avg: 110,
     twelve_m_avg: 110,
-    price: 110,
-    status: 120,
+    // price: 110,
+    price: 80,
+    // status: 120,
+    status: 80,
+
+    // june_prediction: 130,
+    june_prediction: 80,
+    // july_prediction: 130,
+    july_prediction: 80,
+    // august_prediction: 130,
+    august_prediction: 80,
   });
 
   const [hiddenColumns, setHiddenColumns] = useState<string[]>([]);
@@ -91,6 +103,10 @@ export function DashboardTable({
     // { id: "twelve_m_avg", label: "12M Avg" },
     { id: "price", label: "Price" },
     { id: "status", label: "Status" },
+
+    { id: "june_prediction", label: "June Prediction" },
+    { id: "july_prediction", label: "July Prediction" },
+    { id: "august_prediction", label: "August Prediction" },
   ];
 
   const toggleColumnVisibility = (columnId: string) => {
@@ -331,19 +347,10 @@ export function DashboardTable({
                 {/* {renderHeader("twelve_m_avg", "12M Avg", "right")} */}
                 {renderHeader("price", "Price", "right")}
                 {renderHeader("status", "Status", "center")}
-                <TableHead
-                  className={cn(
-                    "font-medium text-muted-foreground py-4 relative group select-none overflow-hidden",
-                    "text-right",
-                  )}
-                >
-                  <div className="truncate pr-2">Prediction June</div>
-                  <div
-                    onPointerDown={(e) => startResize(e, 'prediction_june')}
-                    onClick={(e) => e.stopPropagation()}
-                    className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-primary/50 active:bg-primary z-10 select-none group-hover:bg-muted-foreground/30 transition-colors"
-                  />
-                </TableHead>
+
+                {renderHeader("june_prediction", "June Prediction", "right")}
+                {renderHeader("july_prediction", "July Prediction", "right")}
+                {renderHeader("august_prediction", "August Prediction", "right")}
               </TableRow>
             </TableHeader>
 
@@ -454,6 +461,27 @@ export function DashboardTable({
                         >
                           {item.status}
                         </Badge>
+                      </TableCell>
+                    )}
+
+                    {!hiddenColumns.includes("june_prediction") && (
+                      <TableCell className="text-right font-medium text-blue-600">
+                        {/* {item.june_prediction !== undefined ? item.june_prediction.toFixed(1) : "—"} */}
+                        —
+                      </TableCell>
+                    )}
+
+                    {!hiddenColumns.includes("july_prediction") && (
+                      <TableCell className="text-right font-medium text-blue-600">
+                        {/* {item.july_prediction !== undefined ? item.july_prediction.toFixed(1) : "—"} */}
+                        —
+                      </TableCell>
+                    )}
+
+                    {!hiddenColumns.includes("august_prediction") && (
+                      <TableCell className="text-right font-medium text-blue-600">
+                        {/* {item.august_prediction !== undefined ? item.august_prediction.toFixed(1) : "—"} */}
+                        —
                       </TableCell>
                     )}
                   </TableRow>

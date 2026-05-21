@@ -5,7 +5,7 @@ import api from "@/app/lib/api";
 import { useDropzone } from "react-dropzone";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { UploadCloud, CheckCircle2, AlertCircle, FileSpreadsheet, Loader2, Settings as SettingsIcon } from "lucide-react";
+import { UploadCloud, CheckCircle2, AlertCircle, FileSpreadsheet, Loader2, Settings as SettingsIcon, Brain } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export default function AdminPage() {
@@ -15,6 +15,13 @@ export default function AdminPage() {
   const [uploadResult, setUploadResult] = useState<{ materials_count?: number; monthly_records_count?: number; message?: string } | null>(null);
   const [progress, setProgress] = useState(0);
   const [progressMessage, setProgressMessage] = useState("");
+
+  // Prediction Engine States
+  const [isPredicting, setIsPredicting] = useState(false);
+  const [predictStatus, setPredictStatus] = useState<"idle" | "success" | "error">("idle");
+  const [predictResult, setPredictResult] = useState<{ predictions_count?: number; message?: string } | null>(null);
+  const [predictProgress, setPredictProgress] = useState(0);
+  const [predictMessage, setPredictMessage] = useState("");
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     if (acceptedFiles.length > 0) {
@@ -88,6 +95,56 @@ export default function AdminPage() {
       setUploadResult({ message: err.response?.data?.detail || "An unexpected error occurred during import." });
       setUploadStatus("error");
       setIsUploading(false);
+    }
+  };
+
+  // Prediction Engine Actions
+  const pollPredictStatus = async (taskId: string) => {
+    try {
+      const res = await api.get(`/admin/predict/status/${taskId}`);
+      setPredictProgress(res.data.progress);
+      setPredictMessage(res.data.message);
+
+      if (res.data.status === "completed") {
+        setPredictResult({
+          message: res.data.message,
+          predictions_count: res.data.predictions_count,
+        });
+        setPredictStatus("success");
+        setIsPredicting(false);
+      } else if (res.data.status === "failed") {
+        setPredictResult({ message: res.data.error || "Prediction engine execution failed" });
+        setPredictStatus("error");
+        setIsPredicting(false);
+      } else {
+        // Continue polling
+        setTimeout(() => pollPredictStatus(taskId), 1000);
+      }
+    } catch (err: any) {
+      setPredictResult({ message: "Failed to fetch prediction status" });
+      setPredictStatus("error");
+      setIsPredicting(false);
+    }
+  };
+
+  const handlePredict = async () => {
+    setIsPredicting(true);
+    setPredictStatus("idle");
+    setPredictResult(null);
+    setPredictProgress(0);
+    setPredictMessage("Initializing prediction engine...");
+
+    try {
+      const res = await api.post(`/admin/predict`);
+      const taskId = res.data.task_id;
+      pollPredictStatus(taskId);
+    } catch (err: any) {
+      console.error(err);
+      setPredictResult({
+        message: err.response?.data?.detail || "Failed to contact prediction service. Please ensure FastAPI is running.",
+      });
+      setPredictStatus("error");
+      setIsPredicting(false);
     }
   };
 
@@ -227,6 +284,87 @@ export default function AdminPage() {
               </div>
             )}
 
+          </CardContent>
+        </Card>
+
+        {/* DEMAND PREDICTION ENGINE CARD */}
+        <Card className="shadow-sm border-border">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Brain className="w-5 h-5 text-blue-600" />
+              <span>Demand Prediction Engine</span>
+            </CardTitle>
+            <CardDescription>
+              Execute the machine learning models (Double Exponential Smoothing, Holt-Winters, and TSB Intermittent) on your monthly consumption history to predict material requirements for the next 3 months.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-xl border border-muted bg-muted/20">
+              <div className="space-y-1">
+                <h4 className="font-semibold text-foreground text-sm">Run ML Forecasts</h4>
+                <p className="text-xs text-muted-foreground max-w-md">
+                  Updates 3-month predictions and reorder recommendations for all imported items. Overwrites prior prediction data.
+                </p>
+              </div>
+              <Button
+                onClick={handlePredict}
+                disabled={isPredicting || isUploading}
+                className="gap-2 bg-blue-600 hover:bg-blue-700 w-full sm:w-auto shrink-0"
+              >
+                {isPredicting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Predicting...
+                  </>
+                ) : (
+                  <div className="flex items-center gap-2 text-zinc-300">
+                    <Brain className="w-4 h-4" />
+                    <span>Run Prediction Engine</span>
+                  </div>
+                )}
+              </Button>
+            </div>
+
+            {/* PREDICTION PROGRESS BAR */}
+            {isPredicting && (
+              <div className="space-y-2 mt-4 p-4 rounded-xl border border-blue-100 bg-blue-50/50 dark:border-blue-900/50 dark:bg-blue-950/20">
+                <div className="flex justify-between text-sm font-medium text-blue-700 dark:text-blue-300">
+                  <span>{predictMessage}</span>
+                  <span>{predictProgress}%</span>
+                </div>
+                <div className="w-full bg-blue-200/50 dark:bg-blue-900/40 rounded-full h-2.5 overflow-hidden">
+                  <div
+                    className="bg-blue-600 dark:bg-blue-500 h-2.5 rounded-full transition-all duration-500 ease-out"
+                    style={{ width: `${predictProgress}%` }}
+                  ></div>
+                </div>
+              </div>
+            )}
+
+            {/* PREDICTION STATUS MESSAGES */}
+            {predictStatus === "success" && predictResult && (
+              <div className="p-4 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900 flex gap-3 items-start">
+                <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                <div>
+                  <h4 className="font-semibold text-emerald-800 dark:text-emerald-300">Prediction Completed</h4>
+                  <p className="text-sm text-emerald-700 dark:text-emerald-400/80 mt-1">
+                    {predictResult.message}. Generated forecasts for {predictResult.predictions_count} material codes.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {predictStatus === "error" && predictResult && (
+              <div className="p-4 rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 flex gap-3 items-start">
+                <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
+                <div>
+                  <h4 className="font-semibold text-red-800 dark:text-red-300">Execution Failed</h4>
+                  <p className="text-sm text-red-700 dark:text-red-400/80 mt-1">
+                    {predictResult.message}
+                  </p>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

@@ -67,6 +67,7 @@ export function DashboardTable({
     current_stock: 50,
     coverage_days: 140,
     lead_time: 110,
+    lead_time_qty: 110,
     delta: 95,
     total_lead_time: 130,
     three_m_avg: 110,
@@ -112,6 +113,7 @@ export function DashboardTable({
     { id: "material_description", label: "Description" },
     { id: "vendor", label: "Vendor" },
     { id: "current_stock", label: "Current Stock" },
+    { id: "lead_time_qty", label: "Lead Time Qty" },
     { id: "price", label: "Price" },
     { id: "status", label: "Status" },
     { id: "month1_prediction", label: predictionMonthNames[0] },
@@ -233,6 +235,7 @@ export function DashboardTable({
           "Current Stock": item.current_stock,
           "Coverage (Days)": item.coverage_days,
           "Lead Time": item.lead_time,
+          "Lead Time Qty": item.lead_time_qty,
           "Delta": item.delta,
           "Total Lead Time": item.total_lead_time,
           "3M Avg": item.three_m_avg,
@@ -356,6 +359,7 @@ export function DashboardTable({
                 {renderHeader("vendor", "Vendor")}
                 {/* {renderHeader("machine_population", "Machine Population", "right")} */}
                 {renderHeader("current_stock", "Current Stock", "right")}
+                {renderHeader("lead_time_qty", "Lead Time Qty", "right")}
                 {/* {renderHeader("coverage_days", "Coverage Days", "right")} */}
                 {/* {renderHeader("lead_time", "Lead Time", "right")} */}
                 {/* {renderHeader("delta", "Delta", "right")} */}
@@ -366,8 +370,11 @@ export function DashboardTable({
                 {renderHeader("status", "Status", "center")}
 
                 {renderHeader("month1_prediction", predictionMonthNames[0], "right")}
+                {renderHeader("month1_po", "PO in M1", "right")}
                 {renderHeader("month2_prediction", predictionMonthNames[1], "right")}
+                {renderHeader("month2_po", "PO in M2", "right")}
                 {renderHeader("month3_prediction", predictionMonthNames[2], "right")}
+                {renderHeader("month3_po", "PO in M3", "right")}
               </TableRow>
             </TableHeader>
 
@@ -383,42 +390,56 @@ export function DashboardTable({
                   </TableCell>
                 </TableRow>
               ) : (
-                items.map((item) => (
-                  <TableRow
-                    key={item.material_code}
-                    className={cn(
-                      "hover:bg-muted/50 transition-colors group cursor-pointer",
-                      tableDensity === "compact" && "h-12"
-                    )}
-                    onClick={() => onSelectMaterial(item)}
-                  >
-                    {!hiddenColumns.includes("material_code") && (
-                      <TableCell className="font-medium truncate">{item.material_code}</TableCell>
-                    )}
-                    {!hiddenColumns.includes("material_description") && (
-                      <TableCell
-                        className="text-muted-foreground truncate"
-                        title={item.material_description}
-                      >
-                        {item.material_description}
-                      </TableCell>
-                    )}
-                    {!hiddenColumns.includes("vendor") && (
-                      <TableCell className="truncate" title={item.vendor}>
-                        {item.vendor}
-                      </TableCell>
-                    )}
-                    {/* {!hiddenColumns.includes("machine_population") && (
+                items.map((item) => {
+                  const month1Po =
+                    (item?.lead_time_qty || 0) -
+                    (item?.current_stock || 0) +
+                    (item?.month1_prediction || 0);
+
+                  const month2Po = month1Po + (item?.month2_prediction || 0);
+                  const month3Po = month2Po + (item?.month3_prediction || 0);
+
+                  return (
+                    <TableRow
+                      key={item.material_code}
+                      className={cn(
+                        "hover:bg-muted/50 transition-colors group cursor-pointer",
+                        tableDensity === "compact" && "h-12"
+                      )}
+                      onClick={() => onSelectMaterial(item)}
+                    >
+                      {!hiddenColumns.includes("material_code") && (
+                        <TableCell className="font-medium truncate">{item.material_code}</TableCell>
+                      )}
+                      {!hiddenColumns.includes("material_description") && (
+                        <TableCell
+                          className="text-muted-foreground truncate"
+                          title={item.material_description}
+                        >
+                          {item.material_description}
+                        </TableCell>
+                      )}
+                      {!hiddenColumns.includes("vendor") && (
+                        <TableCell className="truncate" title={item.vendor}>
+                          {item.vendor}
+                        </TableCell>
+                      )}
+                      {/* {!hiddenColumns.includes("machine_population") && (
                       <TableCell className="text-right font-medium truncate">
                         {item.machine_population?.toFixed(0) || "0"}
                       </TableCell>
                     )} */}
-                    {!hiddenColumns.includes("current_stock") && (
-                      <TableCell className="text-right font-medium truncate">
-                        {item.current_stock?.toFixed(1) || "0.0"}
-                      </TableCell>
-                    )}
-                    {/* {!hiddenColumns.includes("coverage_days") && (
+                      {!hiddenColumns.includes("current_stock") && (
+                        <TableCell className="text-right font-medium truncate">
+                          {item.current_stock?.toFixed(1) || "0.0"}
+                        </TableCell>
+                      )}
+                      {!hiddenColumns.includes("lead_time_qty") && (
+                        <TableCell className="text-right font-medium truncate">
+                          {item.lead_time_qty?.toFixed(1) || "0.0"}
+                        </TableCell>
+                      )}
+                      {/* {!hiddenColumns.includes("coverage_days") && (
                       <TableCell className="text-right truncate">
                         <div
                           className={cn(
@@ -434,78 +455,97 @@ export function DashboardTable({
                         </div>
                       </TableCell>
                     )} */}
-                    {/* {!hiddenColumns.includes("lead_time") && (
+                      {/* {!hiddenColumns.includes("lead_time") && (
                       <TableCell className="text-right truncate">
                         {item.lead_time?.toFixed(0) || "0"}
                       </TableCell>
                     )} */}
-                    {/* {!hiddenColumns.includes("delta") && (
+                      {/* {!hiddenColumns.includes("delta") && (
                       <TableCell className="text-right truncate">{item.delta?.toFixed(0) || "0"}</TableCell>
                     )} */}
-                    {/* {!hiddenColumns.includes("total_lead_time") && (
+                      {/* {!hiddenColumns.includes("total_lead_time") && (
                       <TableCell className="text-right truncate">
                         {item.total_lead_time?.toFixed(0) || "0"}
                       </TableCell>
                     )} */}
-                    {/* {!hiddenColumns.includes("three_m_avg") && (
+                      {/* {!hiddenColumns.includes("three_m_avg") && (
                       <TableCell className="text-right truncate">
                         {item.three_m_avg?.toFixed(2) || "0.00"}
                       </TableCell>
                     )} */}
-                    {/* {!hiddenColumns.includes("twelve_m_avg") && (
+                      {/* {!hiddenColumns.includes("twelve_m_avg") && (
                       <TableCell className="text-right truncate">
                         {item.twelve_m_avg?.toFixed(2) || "0.00"}
                       </TableCell>
                     )} */}
-                    {!hiddenColumns.includes("price") && (
-                      <TableCell className="text-right font-medium truncate">
-                        ₹{item.price?.toFixed(2) || "0.00"}
-                      </TableCell>
-                    )}
-                    {!hiddenColumns.includes("status") && (
-                      <TableCell className="text-center truncate">
-                        <Badge
-                          variant="secondary"
-                          className={cn(
-                            "font-medium",
-                            item.status === "Running" &&
-                            "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400",
-                            item.status === "Obsolete" &&
-                            "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400",
-                            item.status === "New" &&
-                            "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400"
-                          )}
-                        >
-                          {item.status}
-                        </Badge>
-                      </TableCell>
-                    )}
+                      {!hiddenColumns.includes("price") && (
+                        <TableCell className="text-right font-medium truncate">
+                          ₹{item.price?.toFixed(2) || "0.00"}
+                        </TableCell>
+                      )}
+                      {!hiddenColumns.includes("status") && (
+                        <TableCell className="text-center truncate">
+                          <Badge
+                            variant="secondary"
+                            className={cn(
+                              "font-medium",
+                              item.status === "Running" &&
+                              "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400",
+                              item.status === "Obsolete" &&
+                              "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400",
+                              item.status === "New" &&
+                              "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400"
+                            )}
+                          >
+                            {item.status}
+                          </Badge>
+                        </TableCell>
+                      )}
 
-                    {!hiddenColumns.includes("month1_prediction") && (
-                      <TableCell className="text-right font-medium text-blue-600">
-                        {item.month1_prediction !== null && item.month1_prediction !== undefined
-                          ? item.month1_prediction.toFixed(1)
-                          : "—"}
-                      </TableCell>
-                    )}
+                      {!hiddenColumns.includes("month1_prediction") && (
+                        <TableCell className="text-right font-medium text-blue-600">
+                          {item.month1_prediction !== null && item.month1_prediction !== undefined
+                            ? item.month1_prediction.toFixed(1)
+                            : "—"}
+                        </TableCell>
+                      )}
 
-                    {!hiddenColumns.includes("month2_prediction") && (
-                      <TableCell className="text-right font-medium text-blue-600">
-                        {item.month2_prediction !== null && item.month2_prediction !== undefined
-                          ? item.month2_prediction.toFixed(1)
-                          : "—"}
-                      </TableCell>
-                    )}
+                      {!hiddenColumns.includes("month1_po") && (
+                        <TableCell className="text-right font-medium text-blue-600">
+                          {month1Po < 0 ? 0 : (month1Po).toFixed(0)}
+                        </TableCell>
+                      )}
 
-                    {!hiddenColumns.includes("month3_prediction") && (
-                      <TableCell className="text-right font-medium text-blue-600">
-                        {item.month3_prediction !== null && item.month3_prediction !== undefined
-                          ? item.month3_prediction.toFixed(1)
-                          : "—"}
-                      </TableCell>
-                    )}
-                  </TableRow>
-                ))
+                      {!hiddenColumns.includes("month2_prediction") && (
+                        <TableCell className="text-right font-medium text-blue-600">
+                          {item.month2_prediction !== null && item.month2_prediction !== undefined
+                            ? item.month2_prediction.toFixed(1)
+                            : "—"}
+                        </TableCell>
+                      )}
+
+                      {!hiddenColumns.includes("month2_po") && (
+                        <TableCell className="text-right font-medium text-blue-600">
+                          {month2Po < 0 ? 0 : (month2Po).toFixed(0)}
+                        </TableCell>
+                      )}
+
+                      {!hiddenColumns.includes("month3_prediction") && (
+                        <TableCell className="text-right font-medium text-blue-600">
+                          {item.month3_prediction !== null && item.month3_prediction !== undefined
+                            ? item.month3_prediction.toFixed(1)
+                            : "—"}
+                        </TableCell>
+                      )}
+
+                      {!hiddenColumns.includes("month3_po") && (
+                        <TableCell className="text-right font-medium text-blue-600">
+                          {month3Po < 0 ? 0 : (month3Po).toFixed(0)}
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  )
+                })
               )}
             </TableBody>
           </Table>

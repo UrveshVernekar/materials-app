@@ -10,6 +10,7 @@ export type Item = {
   price: number;
   status: string;
   lead_time: number;
+  lead_time_qty?: number;
   delta: number;
   total_lead_time: number;
   month1_prediction?: number;

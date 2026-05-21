@@ -336,6 +336,15 @@ export function MaterialDetailDialog({
                   </span>
                 </div>
                 <div className="flex justify-between items-center text-xs">
+                  <span className="text-muted-foreground font-medium">Lead Time Qty</span>
+                  <span className="font-semibold text-foreground">
+                    {selectedMaterial.lead_time_qty?.toLocaleString(undefined, {
+                      minimumFractionDigits: 1,
+                      maximumFractionDigits: 1,
+                    }) || "0.0"} units
+                  </span>
+                </div>
+                <div className="flex justify-between items-center text-xs">
                   <span className="text-muted-foreground font-medium">Unit Price</span>
                   <span className="font-semibold text-foreground">
                     ₹{selectedMaterial.price?.toFixed(2) || "0.00"}

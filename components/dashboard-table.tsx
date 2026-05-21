@@ -60,54 +60,64 @@ export function DashboardTable({
 
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>({
     selection: 48,
-    // material_code: 160,
-    material_code: 90,
-    // material_description: 280,
-    material_description: 200,
+    material_code: 60,
+    material_description: 160,
     vendor: 50,
     machine_population: 170,
-    // current_stock: 140,
-    current_stock: 80,
+    current_stock: 50,
     coverage_days: 140,
     lead_time: 110,
     delta: 95,
     total_lead_time: 130,
     three_m_avg: 110,
     twelve_m_avg: 110,
-    // price: 110,
-    price: 80,
-    // status: 120,
-    status: 80,
-
-    // june_prediction: 130,
-    june_prediction: 80,
-    // july_prediction: 130,
-    july_prediction: 80,
-    // august_prediction: 130,
-    august_prediction: 80,
+    price: 50,
+    status: 50,
+    month1_prediction: 60,
+    month2_prediction: 60,
+    month3_prediction: 60,
   });
+
+  const predictionMonthNames = useMemo(() => {
+    const itemWithPrediction = allItems.find(
+      (item) => item.month1_date && item.month2_date && item.month3_date
+    );
+
+    if (itemWithPrediction && itemWithPrediction.month1_date) {
+      const formatDateStr = (dateStr: string) => {
+        try {
+          const dateObj = new Date(dateStr);
+          const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+          return `${months[dateObj.getMonth()]}-${dateObj.getFullYear().toString().slice(-2)} Forecast`;
+        } catch (e) {
+          return null;
+        }
+      };
+      const m1 = formatDateStr(itemWithPrediction.month1_date);
+      const m2 = itemWithPrediction.month2_date ? formatDateStr(itemWithPrediction.month2_date) : null;
+      const m3 = itemWithPrediction.month3_date ? formatDateStr(itemWithPrediction.month3_date) : null;
+
+      if (m1 && m2 && m3) {
+        return [m1, m2, m3];
+      }
+    }
+
+    return ["Month 1 Forecast", "Month 2 Forecast", "Month 3 Forecast"];
+  }, [allItems]);
 
   const [hiddenColumns, setHiddenColumns] = useState<string[]>([]);
 
-  const toggleableColumns = [
+  const toggleableColumns = useMemo(() => [
     { id: "material_code", label: "Material Code" },
     { id: "material_description", label: "Description" },
     { id: "vendor", label: "Vendor" },
-    // { id: "machine_population", label: "Machine Population" },
     { id: "current_stock", label: "Current Stock" },
-    // { id: "coverage_days", label: "Coverage Days" },
-    // { id: "lead_time", label: "Lead Time" },
-    // { id: "delta", label: "Delta" },
-    // { id: "total_lead_time", label: "Total Lead Time" },
-    // { id: "three_m_avg", label: "3M Avg" },
-    // { id: "twelve_m_avg", label: "12M Avg" },
     { id: "price", label: "Price" },
     { id: "status", label: "Status" },
-
-    { id: "june_prediction", label: "June Prediction" },
-    { id: "july_prediction", label: "July Prediction" },
-    { id: "august_prediction", label: "August Prediction" },
-  ];
+    { id: "month1_prediction", label: predictionMonthNames[0] },
+    { id: "month2_prediction", label: predictionMonthNames[1] },
+    { id: "month3_prediction", label: predictionMonthNames[2] },
+  ], [predictionMonthNames]);
 
   const toggleColumnVisibility = (columnId: string) => {
     setHiddenColumns((prev) =>
@@ -214,21 +224,27 @@ export function DashboardTable({
     try {
       setIsExporting(true);
 
-      const data = filteredItems.map((item: any) => ({
-        "Material Code": item.material_code,
-        "Description": item.material_description,
-        "Vendor": item.vendor,
-        "Machine Population": item.machine_population,
-        "Current Stock": item.current_stock,
-        "Coverage (Days)": item.coverage_days,
-        "Lead Time": item.lead_time,
-        "Delta": item.delta,
-        "Total Lead Time": item.total_lead_time,
-        "3M Avg": item.three_m_avg,
-        "12M Avg": item.twelve_m_avg,
-        "Unit Price": item.price,
-        "Status": item.status,
-      }));
+      const data = filteredItems.map((item: any) => {
+        const rowData: Record<string, any> = {
+          "Material Code": item.material_code,
+          "Description": item.material_description,
+          "Vendor": item.vendor,
+          "Machine Population": item.machine_population,
+          "Current Stock": item.current_stock,
+          "Coverage (Days)": item.coverage_days,
+          "Lead Time": item.lead_time,
+          "Delta": item.delta,
+          "Total Lead Time": item.total_lead_time,
+          "3M Avg": item.three_m_avg,
+          "12M Avg": item.twelve_m_avg,
+          "Unit Price": item.price,
+          "Status": item.status,
+        };
+        rowData[predictionMonthNames[0]] = item.month1_prediction !== null && item.month1_prediction !== undefined ? item.month1_prediction : "";
+        rowData[predictionMonthNames[1]] = item.month2_prediction !== null && item.month2_prediction !== undefined ? item.month2_prediction : "";
+        rowData[predictionMonthNames[2]] = item.month3_prediction !== null && item.month3_prediction !== undefined ? item.month3_prediction : "";
+        return rowData;
+      });
 
       const ws = XLSX.utils.json_to_sheet(data);
       const wb = XLSX.utils.book_new();
@@ -328,8 +344,9 @@ export function DashboardTable({
             style={{
               tableLayout: "fixed",
               width: Object.entries(columnWidths)
-                .filter(([key]) => !hiddenColumns.includes(key))
+                .filter(([key]) => !hiddenColumns.includes(key) && toggleableColumns.some(col => col.id === key))
                 .reduce((sum, [_, width]) => sum + width, 0),
+              minWidth: "100%",
             }}
           >
             <TableHeader className="bg-muted/50 sticky top-0 z-10">
@@ -348,9 +365,9 @@ export function DashboardTable({
                 {renderHeader("price", "Price", "right")}
                 {renderHeader("status", "Status", "center")}
 
-                {renderHeader("june_prediction", "June Prediction", "right")}
-                {renderHeader("july_prediction", "July Prediction", "right")}
-                {renderHeader("august_prediction", "August Prediction", "right")}
+                {renderHeader("month1_prediction", predictionMonthNames[0], "right")}
+                {renderHeader("month2_prediction", predictionMonthNames[1], "right")}
+                {renderHeader("month3_prediction", predictionMonthNames[2], "right")}
               </TableRow>
             </TableHeader>
 
@@ -464,24 +481,27 @@ export function DashboardTable({
                       </TableCell>
                     )}
 
-                    {!hiddenColumns.includes("june_prediction") && (
+                    {!hiddenColumns.includes("month1_prediction") && (
                       <TableCell className="text-right font-medium text-blue-600">
-                        {/* {item.june_prediction !== undefined ? item.june_prediction.toFixed(1) : "—"} */}
-                        —
+                        {item.month1_prediction !== null && item.month1_prediction !== undefined
+                          ? item.month1_prediction.toFixed(1)
+                          : "—"}
                       </TableCell>
                     )}
 
-                    {!hiddenColumns.includes("july_prediction") && (
+                    {!hiddenColumns.includes("month2_prediction") && (
                       <TableCell className="text-right font-medium text-blue-600">
-                        {/* {item.july_prediction !== undefined ? item.july_prediction.toFixed(1) : "—"} */}
-                        —
+                        {item.month2_prediction !== null && item.month2_prediction !== undefined
+                          ? item.month2_prediction.toFixed(1)
+                          : "—"}
                       </TableCell>
                     )}
 
-                    {!hiddenColumns.includes("august_prediction") && (
+                    {!hiddenColumns.includes("month3_prediction") && (
                       <TableCell className="text-right font-medium text-blue-600">
-                        {/* {item.august_prediction !== undefined ? item.august_prediction.toFixed(1) : "—"} */}
-                        —
+                        {item.month3_prediction !== null && item.month3_prediction !== undefined
+                          ? item.month3_prediction.toFixed(1)
+                          : "—"}
                       </TableCell>
                     )}
                   </TableRow>

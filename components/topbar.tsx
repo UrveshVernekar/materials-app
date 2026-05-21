@@ -119,13 +119,13 @@ export function Topbar() {
             <DropdownMenuTrigger asChild>
               <div className="flex items-center gap-3 cursor-pointer pl-2">
                 <div className="hidden sm:block text-right">
-                  <div className="text-sm font-semibold">Urvesh Vernekar</div>
+                  <div className="text-sm font-semibold">Materials User</div>
                   <div className="text-xs text-muted-foreground">Admin</div>
                 </div>
                 <Avatar className="h-9 w-9">
                   <AvatarImage src="" alt="Urvesh" />
                   <AvatarFallback className="bg-gradient-to-br from-blue-600 to-indigo-600 text-white font-bold">
-                    UV
+                    U
                   </AvatarFallback>
                 </Avatar>
               </div>

@@ -12,6 +12,12 @@ export type Item = {
   lead_time: number;
   delta: number;
   total_lead_time: number;
+  month1_prediction?: number;
+  month2_prediction?: number;
+  month3_prediction?: number;
+  month1_date?: string;
+  month2_date?: string;
+  month3_date?: string;
 };
 
 export type TrendData = {

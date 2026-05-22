@@ -140,6 +140,19 @@ export function MaterialDetailDialog({
     };
   }, [selectedMaterial]);
 
+  // Close dialog on Escape key press
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [onClose]);
+
   // Fetch purchase orders when PO tab becomes active
   useEffect(() => {
     if (selectedMaterial && activeTab === "purchase_orders") {

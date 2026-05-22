@@ -57,6 +57,17 @@ export function DashboardTable({
   const [pageSize, setPageSize] = useState("10");
   const [currentPage, setCurrentPage] = useState(1);
   const [isExporting, setIsExporting] = useState(false);
+  const [selectedStatus, setSelectedStatus] = useState<string>("all");
+
+  const statuses = useMemo(() => {
+    const set = new Set<string>();
+    allItems.forEach((item) => {
+      if (item.status) {
+        set.add(item.status);
+      }
+    });
+    return Array.from(set).sort();
+  }, [allItems]);
 
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>({
     selection: 48,
@@ -75,8 +86,11 @@ export function DashboardTable({
     price: 50,
     status: 50,
     month1_prediction: 60,
+    month1_po: 80,
     month2_prediction: 60,
+    month2_po: 80,
     month3_prediction: 60,
+    month3_po: 80,
   });
 
   const predictionMonthNames = useMemo(() => {
@@ -105,6 +119,15 @@ export function DashboardTable({
 
     return ["Month 1 Forecast", "Month 2 Forecast", "Month 3 Forecast"];
   }, [allItems]);
+
+  const poMonthNames = useMemo(() => {
+    return predictionMonthNames.map((name) => {
+      if (name.endsWith(" Forecast")) {
+        return `PO in ${name.slice(0, -9)}`;
+      }
+      return `PO in ${name}`;
+    });
+  }, [predictionMonthNames]);
 
   const [hiddenColumns, setHiddenColumns] = useState<string[]>([]);
 
@@ -165,13 +188,14 @@ export function DashboardTable({
       <TableHead
         style={{ width: columnWidths[key] }}
         className={cn(
-          "font-medium text-muted-foreground py-4 relative group select-none overflow-hidden",
+          "font-medium text-muted-foreground relative group select-none overflow-hidden whitespace-normal break-words h-auto align-middle",
+          tableDensity === "compact" ? "py-2 px-1.5" : "py-3 px-2",
           align === "right" && "text-right",
           align === "center" && "text-center",
           extraClass
         )}
       >
-        <div className="truncate pr-2">{label}</div>
+        <div className="whitespace-normal break-words leading-tight pr-2">{label}</div>
         <div
           onPointerDown={(e) => startResize(e, key)}
           onClick={(e) => e.stopPropagation()}
@@ -190,14 +214,23 @@ export function DashboardTable({
   }, [searchQuery]);
 
   const filteredItems = useMemo(() => {
-    if (!debouncedSearch) return allItems;
-    const lower = debouncedSearch.toLowerCase();
-    return allItems.filter((item) =>
-      item.material_code?.toLowerCase().includes(lower) ||
-      item.material_description?.toLowerCase().includes(lower) ||
-      item.vendor?.toLowerCase().includes(lower)
-    );
-  }, [allItems, debouncedSearch]);
+    let result = allItems;
+
+    if (selectedStatus !== "all") {
+      result = result.filter((item) => item.status === selectedStatus);
+    }
+
+    if (debouncedSearch) {
+      const lower = debouncedSearch.toLowerCase();
+      result = result.filter((item) =>
+        item.material_code?.toLowerCase().includes(lower) ||
+        item.material_description?.toLowerCase().includes(lower) ||
+        item.vendor?.toLowerCase().includes(lower)
+      );
+    }
+
+    return result;
+  }, [allItems, selectedStatus, debouncedSearch]);
 
   const items = useMemo(() => {
     const size = Number(pageSize);
@@ -266,8 +299,8 @@ export function DashboardTable({
     <div className="space-y-6">
       {/* TOOLBAR */}
       <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-        <div className="flex flex-wrap gap-3">
-          <div className="relative w-full sm:w-100">
+        <div className="flex flex-wrap gap-3 items-center w-full sm:w-auto">
+          <div className="relative w-full sm:w-80">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               placeholder="Search material code, description, or vendor..."
@@ -276,6 +309,25 @@ export function DashboardTable({
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
+          <Select
+            value={selectedStatus}
+            onValueChange={(val) => {
+              setSelectedStatus(val);
+              setCurrentPage(1);
+            }}
+          >
+            <SelectTrigger className="w-full sm:w-[150px] h-10 bg-background shadow-sm">
+              <SelectValue placeholder="All Statuses" />
+            </SelectTrigger>
+            <SelectContent className="bg-background border border-border">
+              <SelectItem value="all">All Statuses</SelectItem>
+              {statuses.map((status) => (
+                <SelectItem key={status} value={status}>
+                  {status}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="flex items-center gap-3 text-sm">
@@ -347,7 +399,7 @@ export function DashboardTable({
             style={{
               tableLayout: "fixed",
               width: Object.entries(columnWidths)
-                .filter(([key]) => !hiddenColumns.includes(key) && toggleableColumns.some(col => col.id === key))
+                .filter(([key]) => !hiddenColumns.includes(key) && (toggleableColumns.some(col => col.id === key) || key.endsWith("_po")))
                 .reduce((sum, [_, width]) => sum + width, 0),
               minWidth: "100%",
             }}
@@ -370,11 +422,11 @@ export function DashboardTable({
                 {renderHeader("status", "Status", "center")}
 
                 {renderHeader("month1_prediction", predictionMonthNames[0], "right")}
-                {renderHeader("month1_po", "PO in M1", "right")}
+                {renderHeader("month1_po", poMonthNames[0], "right")}
                 {renderHeader("month2_prediction", predictionMonthNames[1], "right")}
-                {renderHeader("month2_po", "PO in M2", "right")}
+                {renderHeader("month2_po", poMonthNames[1], "right")}
                 {renderHeader("month3_prediction", predictionMonthNames[2], "right")}
-                {renderHeader("month3_po", "PO in M3", "right")}
+                {renderHeader("month3_po", poMonthNames[2], "right")}
               </TableRow>
             </TableHeader>
 
@@ -480,7 +532,9 @@ export function DashboardTable({
                     )} */}
                       {!hiddenColumns.includes("price") && (
                         <TableCell className="text-right font-medium truncate">
-                          ₹{item.price?.toFixed(2) || "0.00"}
+                          {item.price != null && item.price !== 0
+                            ? `₹${item.price.toFixed(2)}`
+                            : "-"}
                         </TableCell>
                       )}
                       {!hiddenColumns.includes("status") && (
@@ -505,7 +559,7 @@ export function DashboardTable({
                       {!hiddenColumns.includes("month1_prediction") && (
                         <TableCell className="text-right font-medium text-blue-600">
                           {item.month1_prediction !== null && item.month1_prediction !== undefined
-                            ? item.month1_prediction.toFixed(1)
+                            ? item.month1_prediction.toFixed(0)
                             : "—"}
                         </TableCell>
                       )}
@@ -519,7 +573,7 @@ export function DashboardTable({
                       {!hiddenColumns.includes("month2_prediction") && (
                         <TableCell className="text-right font-medium text-blue-600">
                           {item.month2_prediction !== null && item.month2_prediction !== undefined
-                            ? item.month2_prediction.toFixed(1)
+                            ? item.month2_prediction.toFixed(0)
                             : "—"}
                         </TableCell>
                       )}
@@ -533,7 +587,7 @@ export function DashboardTable({
                       {!hiddenColumns.includes("month3_prediction") && (
                         <TableCell className="text-right font-medium text-blue-600">
                           {item.month3_prediction !== null && item.month3_prediction !== undefined
-                            ? item.month3_prediction.toFixed(1)
+                            ? item.month3_prediction.toFixed(0)
                             : "—"}
                         </TableCell>
                       )}

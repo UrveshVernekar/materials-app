@@ -93,6 +93,9 @@ export function MaterialDetailDialog({
     }
   };
 
+  const [trendMonths, setTrendMonths] = useState<number>(12);
+
+  // Reset modal UI state when a new material is selected
   useEffect(() => {
     if (!selectedMaterial) {
       setTrendData([]);
@@ -103,8 +106,20 @@ export function MaterialDetailDialog({
       setEditingPO(null);
       setFormError("");
       setFormSuccess("");
+      setTrendMonths(12);
       return;
     }
+    setActiveTab("overview");
+    setIsFormOpen(false);
+    setEditingPO(null);
+    setFormError("");
+    setFormSuccess("");
+    setTrendMonths(12);
+  }, [selectedMaterial]);
+
+  // Fetch consumption trend data based on selected range
+  useEffect(() => {
+    if (!selectedMaterial) return;
 
     let isMounted = true;
     const fetchTrend = async () => {
@@ -112,12 +127,13 @@ export function MaterialDetailDialog({
         setLoadingTrend(true);
         setTrendError("");
         const res = await api.get("/analytics/monthly-trend", {
-          params: { material_code: selectedMaterial.material_code },
+          params: { 
+            material_code: selectedMaterial.material_code,
+            limit: trendMonths
+          },
         });
         if (isMounted) {
-          const rawData = res.data.data || [];
-          const slicedData = rawData.slice(-12);
-          setTrendData(slicedData);
+          setTrendData(res.data.data || []);
         }
       } catch (err) {
         if (isMounted) {
@@ -129,16 +145,11 @@ export function MaterialDetailDialog({
     };
 
     fetchTrend();
-    setActiveTab("overview");
-    setIsFormOpen(false);
-    setEditingPO(null);
-    setFormError("");
-    setFormSuccess("");
 
     return () => {
       isMounted = false;
     };
-  }, [selectedMaterial]);
+  }, [selectedMaterial, trendMonths]);
 
   // Close dialog on Escape key press
   useEffect(() => {
@@ -480,9 +491,21 @@ export function MaterialDetailDialog({
                 {activeTab === "overview" && (
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <h3 className="text-xs font-semibold tracking-wide uppercase text-muted-foreground">
-                        Consumption Trend (Last 12 Months)
-                      </h3>
+                      <div className="flex items-center gap-3">
+                        <h3 className="text-xs font-semibold tracking-wide uppercase text-muted-foreground">
+                          Consumption Trend
+                        </h3>
+                        <select
+                          value={trendMonths}
+                          onChange={(e) => setTrendMonths(Number(e.target.value))}
+                          className="flex h-7 w-28 rounded-md border border-input bg-background px-2 py-0.5 text-xs shadow-xs transition-colors focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring focus:border-primary cursor-pointer font-medium text-foreground"
+                        >
+                          <option value={3}>3 Months</option>
+                          <option value={6}>6 Months</option>
+                          <option value={12}>12 Months</option>
+                          <option value={24}>24 Months</option>
+                        </select>
+                      </div>
                       {trendData.length > 0 && (
                         <span className="text-[10px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400 px-2.5 py-0.5 rounded-full">
                           {trendData.length} months of data

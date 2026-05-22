@@ -91,6 +91,9 @@ export function DashboardTable({
     month2_po: 80,
     month3_prediction: 60,
     month3_po: 80,
+    month1_mes: 80,
+    month2_mes: 80,
+    month3_mes: 80,
   });
 
   const predictionMonthNames = useMemo(() => {
@@ -129,7 +132,19 @@ export function DashboardTable({
     });
   }, [predictionMonthNames]);
 
-  const [hiddenColumns, setHiddenColumns] = useState<string[]>([]);
+  const mesMonthNames = useMemo(() => {
+    return predictionMonthNames.map((name) => {
+      if (name.endsWith(" Forecast")) {
+        return `MES in ${name.slice(0, -9)}`;
+      }
+      return `MES in ${name}`;
+    });
+  }, [predictionMonthNames]);
+
+  const [hiddenColumns, setHiddenColumns] = useState<string[]>([
+    "material_description",
+    "vendor",
+  ]);
 
   const toggleableColumns = useMemo(() => [
     { id: "material_code", label: "Material Code" },
@@ -140,9 +155,15 @@ export function DashboardTable({
     { id: "price", label: "Price" },
     { id: "status", label: "Status" },
     { id: "month1_prediction", label: predictionMonthNames[0] },
+    { id: "month1_po", label: poMonthNames[0] },
+    { id: "month1_mes", label: mesMonthNames[0] },
     { id: "month2_prediction", label: predictionMonthNames[1] },
+    { id: "month2_po", label: poMonthNames[1] },
+    { id: "month2_mes", label: mesMonthNames[1] },
     { id: "month3_prediction", label: predictionMonthNames[2] },
-  ], [predictionMonthNames]);
+    { id: "month3_po", label: poMonthNames[2] },
+    { id: "month3_mes", label: mesMonthNames[2] },
+  ], [predictionMonthNames, poMonthNames, mesMonthNames]);
 
   const toggleColumnVisibility = (columnId: string) => {
     setHiddenColumns((prev) =>
@@ -276,9 +297,30 @@ export function DashboardTable({
           "Unit Price": item.price,
           "Status": item.status,
         };
+        // Month 1
         rowData[predictionMonthNames[0]] = item.month1_prediction !== null && item.month1_prediction !== undefined ? item.month1_prediction : "";
+        const m1Po = (item?.lead_time_qty || 0) - (item?.current_stock || 0) + (item?.month1_prediction || 0);
+        const m1PoClamped = m1Po < 0 ? 0 : m1Po;
+        rowData[poMonthNames[0]] = m1PoClamped;
+        let m1Mes = (item?.current_stock || 0) - (item?.month1_prediction || 0) + m1PoClamped;
+        rowData[mesMonthNames[0]] = m1Mes;
+
+        // Month 2
         rowData[predictionMonthNames[1]] = item.month2_prediction !== null && item.month2_prediction !== undefined ? item.month2_prediction : "";
+        const m2Po = m1PoClamped + (item?.month2_prediction || 0);
+        const m2PoClamped = m2Po < 0 ? 0 : m2Po;
+        rowData[poMonthNames[1]] = m2PoClamped;
+        const m2Mes = m1Mes + m2PoClamped - (item?.month2_prediction || 0);
+        rowData[mesMonthNames[1]] = m2Mes;
+
+        // Month 3
         rowData[predictionMonthNames[2]] = item.month3_prediction !== null && item.month3_prediction !== undefined ? item.month3_prediction : "";
+        const m3Po = m2PoClamped + (item?.month3_prediction || 0);
+        const m3PoClamped = m3Po < 0 ? 0 : m3Po;
+        rowData[poMonthNames[2]] = m3PoClamped;
+        const m3Mes = m2Mes + m3PoClamped - (item?.month3_prediction || 0);
+        rowData[mesMonthNames[2]] = m3Mes;
+
         return rowData;
       });
 
@@ -399,7 +441,7 @@ export function DashboardTable({
             style={{
               tableLayout: "fixed",
               width: Object.entries(columnWidths)
-                .filter(([key]) => !hiddenColumns.includes(key) && (toggleableColumns.some(col => col.id === key) || key.endsWith("_po")))
+                .filter(([key]) => !hiddenColumns.includes(key) && toggleableColumns.some(col => col.id === key))
                 .reduce((sum, [_, width]) => sum + width, 0),
               minWidth: "100%",
             }}
@@ -423,17 +465,20 @@ export function DashboardTable({
 
                 {renderHeader("month1_prediction", predictionMonthNames[0], "right")}
                 {renderHeader("month1_po", poMonthNames[0], "right")}
+                {renderHeader("month1_mes", mesMonthNames[0], "right")}
                 {renderHeader("month2_prediction", predictionMonthNames[1], "right")}
                 {renderHeader("month2_po", poMonthNames[1], "right")}
+                {renderHeader("month2_mes", mesMonthNames[1], "right")}
                 {renderHeader("month3_prediction", predictionMonthNames[2], "right")}
                 {renderHeader("month3_po", poMonthNames[2], "right")}
+                {renderHeader("month3_mes", mesMonthNames[2], "right")}
               </TableRow>
             </TableHeader>
 
             <TableBody>
               {items.length === 0 && !loading ? (
                 <TableRow>
-                  <TableCell colSpan={14 - hiddenColumns.length} className="h-72 text-center">
+                  <TableCell colSpan={16 - hiddenColumns.length} className="h-72 text-center">
                     <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
                       <Search className="w-10 h-10 mb-4 opacity-40" />
                       <p className="font-medium">No matching materials found</p>
@@ -447,9 +492,12 @@ export function DashboardTable({
                     (item?.lead_time_qty || 0) -
                     (item?.current_stock || 0) +
                     (item?.month1_prediction || 0);
-
                   const month2Po = month1Po + (item?.month2_prediction || 0);
                   const month3Po = month2Po + (item?.month3_prediction || 0);
+
+                  const mes1 = item?.current_stock - (item?.month1_prediction || 0) + month1Po;
+                  const mes2 = mes1 + month2Po - (item?.month2_prediction || 0);
+                  const mes3 = mes2 + month3Po - (item?.month3_prediction || 0);
 
                   return (
                     <TableRow
@@ -488,7 +536,7 @@ export function DashboardTable({
                       )}
                       {!hiddenColumns.includes("lead_time_qty") && (
                         <TableCell className="text-right font-medium truncate">
-                          {item.lead_time_qty?.toFixed(1) || "0.0"}
+                          {item.lead_time_qty?.toFixed(0) || "-"}
                         </TableCell>
                       )}
                       {/* {!hiddenColumns.includes("coverage_days") && (
@@ -570,6 +618,14 @@ export function DashboardTable({
                         </TableCell>
                       )}
 
+                      {!hiddenColumns.includes("month1_mes") && (
+                        <TableCell className="text-right font-medium text-slate-700 dark:text-slate-300">
+                          {mes1 !== null && !isNaN(mes1)
+                            ? Math.max(0, mes1).toFixed(0)
+                            : "—"}
+                        </TableCell>
+                      )}
+
                       {!hiddenColumns.includes("month2_prediction") && (
                         <TableCell className="text-right font-medium text-blue-600">
                           {item.month2_prediction !== null && item.month2_prediction !== undefined
@@ -584,6 +640,14 @@ export function DashboardTable({
                         </TableCell>
                       )}
 
+                      {!hiddenColumns.includes("month2_mes") && (
+                        <TableCell className="text-right font-medium text-slate-700 dark:text-slate-300">
+                          {mes2 !== null && !isNaN(mes2)
+                            ? Math.max(0, mes2).toFixed(0)
+                            : "—"}
+                        </TableCell>
+                      )}
+
                       {!hiddenColumns.includes("month3_prediction") && (
                         <TableCell className="text-right font-medium text-blue-600">
                           {item.month3_prediction !== null && item.month3_prediction !== undefined
@@ -595,6 +659,14 @@ export function DashboardTable({
                       {!hiddenColumns.includes("month3_po") && (
                         <TableCell className="text-right font-medium text-blue-600">
                           {month3Po < 0 ? 0 : (month3Po).toFixed(0)}
+                        </TableCell>
+                      )}
+
+                      {!hiddenColumns.includes("month3_mes") && (
+                        <TableCell className="text-right font-medium text-slate-700 dark:text-slate-300">
+                          {mes3 !== null && !isNaN(mes3)
+                            ? Math.max(0, mes3).toFixed(0)
+                            : "—"}
                         </TableCell>
                       )}
                     </TableRow>

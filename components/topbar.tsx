@@ -14,9 +14,17 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
+import { useAuth } from "@/components/auth-provider";
 
 export function Topbar() {
+  const { user, logout } = useAuth();
+  
+  const firstName = user?.first_name || "Materials";
+  const lastName = user?.last_name || "User";
+  const fullName = `${firstName} ${lastName}`;
+  const roleName = user?.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : "User";
+  const initials = `${firstName[0] || ""}${lastName[0] || ""}`.toUpperCase() || "MU";
+
   return (
     <header className="h-16 border-b border-border bg-card/95 backdrop-blur-xl sticky top-0 z-50 flex-shrink-0">
       <div className="h-full px-6 flex items-center justify-between">
@@ -119,13 +127,13 @@ export function Topbar() {
             <DropdownMenuTrigger asChild>
               <div className="flex items-center gap-3 cursor-pointer pl-2">
                 <div className="hidden sm:block text-right">
-                  <div className="text-sm font-semibold">Materials User</div>
-                  <div className="text-xs text-muted-foreground">Admin</div>
+                  <div className="text-sm font-semibold">{fullName}</div>
+                  <div className="text-xs text-muted-foreground">{roleName}</div>
                 </div>
                 <Avatar className="h-9 w-9">
-                  <AvatarImage src="" alt="Urvesh" />
+                  <AvatarImage src="" alt={fullName} />
                   <AvatarFallback className="bg-gradient-to-br from-blue-600 to-indigo-600 text-white font-bold">
-                    U
+                    {initials}
                   </AvatarFallback>
                 </Avatar>
               </div>
@@ -138,7 +146,7 @@ export function Topbar() {
               <DropdownMenuItem>Settings</DropdownMenuItem>
               <DropdownMenuItem>Notifications</DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-red-600">
+              <DropdownMenuItem className="text-red-600 cursor-pointer" onClick={logout}>
                 Sign out
               </DropdownMenuItem>
             </DropdownMenuContent>

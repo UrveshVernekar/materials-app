@@ -56,6 +56,17 @@ export function MaterialDetailDialog({
     return ["Month 1 Forecast", "Month 2 Forecast", "Month 3 Forecast"];
   }, [selectedMaterial]);
 
+  const computedCoverageDays = useMemo(() => {
+    if (!selectedMaterial) return "—";
+    if (selectedMaterial.twelve_m_avg && selectedMaterial.twelve_m_avg > 0) {
+      const val = (selectedMaterial.current_stock / selectedMaterial.twelve_m_avg) * 30;
+      if (isFinite(val) && !isNaN(val)) {
+        return `${val.toFixed(0)} days`;
+      }
+    }
+    return selectedMaterial.current_stock > 0 ? "—" : "0 days";
+  }, [selectedMaterial]);
+
   // Tab State
   const [activeTab, setActiveTab] = useState<"overview" | "purchase_orders">("overview");
 
@@ -374,6 +385,26 @@ export function MaterialDetailDialog({
                     ₹{selectedMaterial.price?.toFixed(2) || "0.00"}
                   </span>
                 </div>
+                <div className="flex justify-between items-center text-xs border-t pt-2 border-border/40">
+                  <span className="text-muted-foreground font-medium">Coverage Days</span>
+                  <span className="font-semibold text-foreground">
+                    {computedCoverageDays}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-muted-foreground font-medium">Status</span>
+                  <span className="font-semibold text-foreground">
+                    {selectedMaterial.status || "N/A"}
+                  </span>
+                </div>
+                {selectedMaterial.product_category && (
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-muted-foreground font-medium">Category</span>
+                    <span className="font-semibold text-foreground">
+                      {selectedMaterial.product_category}
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* LEAD TIME DETAILS */}
@@ -425,6 +456,11 @@ export function MaterialDetailDialog({
                       ? selectedMaterial.month1_prediction.toFixed(0)
                       : "—"}
                   </div>
+                  {selectedMaterial.month1_prediction !== null && selectedMaterial.month1_prediction !== undefined && (
+                    <div className="text-[10px] text-blue-500/80 dark:text-blue-400/80 font-medium">
+                      {selectedMaterial.month1_prediction_days ? `${selectedMaterial.month1_prediction_days.toFixed(0)}d` : "0d"}
+                    </div>
+                  )}
                 </div>
                 <div className="text-center">
                   <div className="text-[9px] font-semibold text-blue-600 dark:text-blue-400 uppercase truncate">
@@ -435,6 +471,11 @@ export function MaterialDetailDialog({
                       ? selectedMaterial.month2_prediction.toFixed(0)
                       : "—"}
                   </div>
+                  {selectedMaterial.month2_prediction !== null && selectedMaterial.month2_prediction !== undefined && (
+                    <div className="text-[10px] text-blue-500/80 dark:text-blue-400/80 font-medium">
+                      {selectedMaterial.month2_prediction_days ? `${selectedMaterial.month2_prediction_days.toFixed(0)}d` : "0d"}
+                    </div>
+                  )}
                 </div>
                 <div className="text-center">
                   <div className="text-[9px] font-semibold text-blue-600 dark:text-blue-400 uppercase truncate">
@@ -445,6 +486,11 @@ export function MaterialDetailDialog({
                       ? selectedMaterial.month3_prediction.toFixed(0)
                       : "—"}
                   </div>
+                  {selectedMaterial.month3_prediction !== null && selectedMaterial.month3_prediction !== undefined && (
+                    <div className="text-[10px] text-blue-500/80 dark:text-blue-400/80 font-medium">
+                      {selectedMaterial.month3_prediction_days ? `${selectedMaterial.month3_prediction_days.toFixed(0)}d` : "0d"}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -525,40 +571,95 @@ export function MaterialDetailDialog({
                         {trendError}
                       </div>
                     ) : trendData.length > 0 ? (
-                      <div className="h-[220px] w-full min-w-0 border rounded-xl p-4 bg-muted/10">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <AreaChart data={trendData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
-                            <defs>
-                              <linearGradient id="dialogColorConsumption" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.25} />
-                                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                              </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#88888820" />
-                            <XAxis
-                              dataKey="formatted_date"
-                              axisLine={false}
-                              tickLine={false}
-                              tick={{ fontSize: 9, fill: '#888888' }}
-                              dy={8}
-                            />
-                            <YAxis
-                              axisLine={false}
-                              tickLine={false}
-                              tick={{ fontSize: 9, fill: '#888888' }}
-                              tickFormatter={(val) => (val >= 1000 ? `${(val / 1000).toFixed(0)}k` : val)}
-                            />
-                            <RechartsTooltip content={<CustomTooltip />} />
-                            <Area
-                              type="monotone"
-                              dataKey="total_consumption"
-                              stroke="#3b82f6"
-                              strokeWidth={2}
-                              fillOpacity={1}
-                              fill="url(#dialogColorConsumption)"
-                            />
-                          </AreaChart>
-                        </ResponsiveContainer>
+                      <div className="space-y-4 animate-in fade-in duration-300">
+                        <div className="h-[220px] w-full min-w-0 border rounded-xl p-4 bg-muted/10">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={trendData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
+                              <defs>
+                                <linearGradient id="dialogColorConsumption" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.25} />
+                                  <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                                </linearGradient>
+                              </defs>
+                              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#88888820" />
+                              <XAxis
+                                dataKey="formatted_date"
+                                axisLine={false}
+                                tickLine={false}
+                                tick={{ fontSize: 9, fill: '#888888' }}
+                                dy={8}
+                              />
+                              <YAxis
+                                axisLine={false}
+                                tickLine={false}
+                                tick={{ fontSize: 9, fill: '#888888' }}
+                                tickFormatter={(val) => (val >= 1000 ? `${(val / 1000).toFixed(0)}k` : val)}
+                              />
+                              <RechartsTooltip content={<CustomTooltip />} />
+                              <Area
+                                type="monotone"
+                                dataKey="total_consumption"
+                                stroke="#3b82f6"
+                                strokeWidth={2}
+                                fillOpacity={1}
+                                fill="url(#dialogColorConsumption)"
+                              />
+                            </AreaChart>
+                          </ResponsiveContainer>
+                        </div>
+
+                        {/* 3-Month Forecast breakdown table */}
+                        <div className="border rounded-xl overflow-hidden bg-background">
+                          <div className="bg-muted/40 px-3 py-2 border-b">
+                            <h4 className="text-[11px] font-bold text-foreground uppercase tracking-wide">
+                              3-Month Forecast & Procurement Plan Details
+                            </h4>
+                          </div>
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse text-xs">
+                              <thead>
+                                <tr className="border-b bg-muted/20 text-muted-foreground font-semibold">
+                                  <th className="p-2.5">Month</th>
+                                  <th className="p-2.5 text-right">Forecast (Qty)</th>
+                                  <th className="p-2.5 text-right">Forecast (Days)</th>
+                                  <th className="p-2.5 text-right text-blue-600 dark:text-blue-400">PO (Qty)</th>
+                                  <th className="p-2.5 text-right text-blue-600 dark:text-blue-400">PO (Days)</th>
+                                  <th className="p-2.5 text-right text-purple-600 dark:text-purple-400">MES (Qty)</th>
+                                  <th className="p-2.5 text-right text-purple-600 dark:text-purple-400">MES (Days)</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y text-foreground/90">
+                                <tr>
+                                  <td className="p-2.5 font-medium">{predictionMonthNames[0].split(" ")[0]}</td>
+                                  <td className="p-2.5 text-right">{selectedMaterial.month1_prediction?.toFixed(0) || "—"}</td>
+                                  <td className="p-2.5 text-right">{selectedMaterial.month1_prediction_days ? `${selectedMaterial.month1_prediction_days.toFixed(0)}d` : "0d"}</td>
+                                  <td className="p-2.5 text-right font-medium text-blue-600 dark:text-blue-400">{selectedMaterial.month1_po?.toFixed(0) || "0"}</td>
+                                  <td className="p-2.5 text-right text-blue-600 dark:text-blue-400">{selectedMaterial.month1_po_days ? `${selectedMaterial.month1_po_days.toFixed(0)}d` : "0d"}</td>
+                                  <td className="p-2.5 text-right font-medium text-purple-600 dark:text-purple-400">{selectedMaterial.month1_mes?.toFixed(0) || "0"}</td>
+                                  <td className="p-2.5 text-right text-purple-600 dark:text-purple-400">{selectedMaterial.month1_mes_days ? `${selectedMaterial.month1_mes_days.toFixed(0)}d` : "0d"}</td>
+                                </tr>
+                                <tr>
+                                  <td className="p-2.5 font-medium">{predictionMonthNames[1].split(" ")[0]}</td>
+                                  <td className="p-2.5 text-right">{selectedMaterial.month2_prediction?.toFixed(0) || "—"}</td>
+                                  <td className="p-2.5 text-right">{selectedMaterial.month2_prediction_days ? `${selectedMaterial.month2_prediction_days.toFixed(0)}d` : "0d"}</td>
+                                  <td className="p-2.5 text-right font-medium text-blue-600 dark:text-blue-400">{selectedMaterial.month2_po?.toFixed(0) || "0"}</td>
+                                  <td className="p-2.5 text-right text-blue-600 dark:text-blue-400">{selectedMaterial.month2_po_days ? `${selectedMaterial.month2_po_days.toFixed(0)}d` : "0d"}</td>
+                                  <td className="p-2.5 text-right font-medium text-purple-600 dark:text-purple-400">{selectedMaterial.month2_mes?.toFixed(0) || "0"}</td>
+                                  <td className="p-2.5 text-right text-purple-600 dark:text-purple-400">{selectedMaterial.month2_mes_days ? `${selectedMaterial.month2_mes_days.toFixed(0)}d` : "0d"}</td>
+                                </tr>
+                                <tr>
+                                  <td className="p-2.5 font-medium">{predictionMonthNames[2].split(" ")[0]}</td>
+                                  <td className="p-2.5 text-right">{selectedMaterial.month3_prediction?.toFixed(0) || "—"}</td>
+                                  <td className="p-2.5 text-right">{selectedMaterial.month3_prediction_days ? `${selectedMaterial.month3_prediction_days.toFixed(0)}d` : "0d"}</td>
+                                  <td className="p-2.5 text-right font-medium text-blue-600 dark:text-blue-400">{selectedMaterial.month3_po?.toFixed(0) || "0"}</td>
+                                  <td className="p-2.5 text-right text-blue-600 dark:text-blue-400">{selectedMaterial.month3_po_days ? `${selectedMaterial.month3_po_days.toFixed(0)}d` : "0d"}</td>
+                                  <td className="p-2.5 text-right font-medium text-purple-600 dark:text-purple-400">{selectedMaterial.month3_mes?.toFixed(0) || "0"}</td>
+                                  <td className="p-2.5 text-right text-purple-600 dark:text-purple-400">{selectedMaterial.month3_mes_days ? `${selectedMaterial.month3_mes_days.toFixed(0)}d` : "0d"}</td>
+                                </tr>
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
                       </div>
                     ) : (
                       <div className="h-[220px] border border-dashed rounded-xl flex flex-col items-center justify-center text-muted-foreground bg-muted/5">

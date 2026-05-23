@@ -50,10 +50,19 @@ import { Item } from "@/app/types";
 export interface EnrichedItem extends Item {
   month1_po: number;
   month1_mes: number;
+  month1_prediction_days: number;
+  month1_po_days: number;
+  month1_mes_days: number;
   month2_po: number;
   month2_mes: number;
+  month2_prediction_days: number;
+  month2_po_days: number;
+  month2_mes_days: number;
   month3_po: number;
   month3_mes: number;
+  month3_prediction_days: number;
+  month3_po_days: number;
+  month3_mes_days: number;
 }
 
 interface DashboardTableProps {
@@ -70,6 +79,7 @@ export function DashboardTable({
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [tableDensity, setTableDensity] = useState<"default" | "compact">("default");
+  const [viewMode, setViewMode] = useState<"qty" | "days">("qty");
   const [pageSize, setPageSize] = useState("10");
   const [currentPage, setCurrentPage] = useState(1);
   const [isExporting, setIsExporting] = useState(false);
@@ -84,6 +94,14 @@ export function DashboardTable({
     setFilters((prev) => ({
       ...prev,
       status: statusVal === "all" ? "" : statusVal,
+    }));
+  };
+
+  const selectedCategory = filters.product_category || "all";
+  const setSelectedCategory = (categoryVal: string) => {
+    setFilters((prev) => ({
+      ...prev,
+      product_category: categoryVal === "all" ? "" : categoryVal,
     }));
   };
 
@@ -118,6 +136,16 @@ export function DashboardTable({
     return Array.from(set).sort();
   }, [allItems]);
 
+  const categories = useMemo(() => {
+    const set = new Set<string>();
+    allItems.forEach((item) => {
+      if (item.product_category) {
+        set.add(item.product_category);
+      }
+    });
+    return Array.from(set).sort();
+  }, [allItems]);
+
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>({
     selection: 48,
     material_code: 140,
@@ -126,6 +154,7 @@ export function DashboardTable({
     machine_population: 170,
     current_stock: 110,
     coverage_days: 140,
+    product_category: 100,
     lead_time: 110,
     lead_time_qty: 100,
     delta: 95,
@@ -200,6 +229,8 @@ export function DashboardTable({
     { id: "material_description", label: "Description" },
     { id: "vendor", label: "Vendor" },
     { id: "current_stock", label: "GPC Stk." },
+    { id: "coverage_days", label: "Coverage Days" },
+    { id: "product_category", label: "Category" },
     { id: "lead_time", label: "Lead Time" },
     { id: "lead_time_qty", label: "LT Qty." },
     { id: "twelve_m_avg", label: "12M Avg" },
@@ -330,28 +361,28 @@ export function DashboardTable({
 
     if (key.endsWith("_prediction")) {
       const monthStr = getMonthPart(label);
-      tooltipTitle = `${monthStr} Forecast`;
+      tooltipTitle = `${monthStr} Forecast (${viewMode === "days" ? "Days" : "Quantity"})`;
       displayLabel = (
         <span className={cn("inline-flex items-center gap-1.5", align === "right" && "justify-end", align === "center" && "justify-center")}>
-          <span>{monthStr}</span>
+          <span>{monthStr} <span className="text-[10px] opacity-70 font-normal">({viewMode === "days" ? "Days" : "Qty"})</span></span>
           <TrendingUpDown className="w-3.5 h-3.5 text-blue-500 dark:text-blue-400 flex-shrink-0" />
         </span>
       );
     } else if (key.endsWith("_po")) {
       const monthStr = getMonthPart(label);
-      tooltipTitle = `${monthStr} Purchase Order`;
+      tooltipTitle = `${monthStr} Purchase Order (${viewMode === "days" ? "Days" : "Quantity"})`;
       displayLabel = (
         <span className={cn("inline-flex items-center gap-1.5", align === "right" && "justify-end", align === "center" && "justify-center")}>
-          <span>{monthStr}</span>
+          <span>{monthStr} <span className="text-[10px] opacity-70 font-normal">({viewMode === "days" ? "Days" : "Qty"})</span></span>
           <ShoppingCart className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400 flex-shrink-0" />
         </span>
       );
     } else if (key.endsWith("_mes")) {
       const monthStr = getMonthPart(label);
-      tooltipTitle = `${monthStr} MES (Month End Stock)`;
+      tooltipTitle = `${monthStr} MES (${viewMode === "days" ? "Days" : "Quantity"})`;
       displayLabel = (
         <span className={cn("inline-flex items-center gap-1.5", align === "right" && "justify-end", align === "center" && "justify-center")}>
-          <span>{monthStr}</span>
+          <span>{monthStr} <span className="text-[10px] opacity-70 font-normal">({viewMode === "days" ? "Days" : "Qty"})</span></span>
           <Box className="w-3.5 h-3.5 text-purple-500 dark:text-purple-400 flex-shrink-0" />
         </span>
       );
@@ -407,14 +438,37 @@ export function DashboardTable({
 
   const enrichedItems = useMemo(() => {
     return allItems.map((item) => {
+      // Calculate coverage days safely
+      let computedCoverage = 0;
+      if (item.twelve_m_avg && item.twelve_m_avg > 0) {
+        const val = (item.current_stock / item.twelve_m_avg) * 30;
+        if (isFinite(val) && !isNaN(val)) {
+          computedCoverage = val;
+        } else {
+          computedCoverage = item.current_stock > 0 ? 999999 : 0;
+        }
+      } else {
+        computedCoverage = item.current_stock > 0 ? 999999 : 0;
+      }
+
       return {
         ...item,
+        coverage_days: computedCoverage,
         month1_po: item.month1_po || 0,
         month1_mes: item.month1_mes || 0,
+        month1_prediction_days: item.month1_prediction_days || 0,
+        month1_po_days: item.month1_po_days || 0,
+        month1_mes_days: item.month1_mes_days || 0,
         month2_po: item.month2_po || 0,
         month2_mes: item.month2_mes || 0,
+        month2_prediction_days: item.month2_prediction_days || 0,
+        month2_po_days: item.month2_po_days || 0,
+        month2_mes_days: item.month2_mes_days || 0,
         month3_po: item.month3_po || 0,
         month3_mes: item.month3_mes || 0,
+        month3_prediction_days: item.month3_prediction_days || 0,
+        month3_po_days: item.month3_po_days || 0,
+        month3_mes_days: item.month3_mes_days || 0,
       };
     });
   }, [allItems]);
@@ -472,6 +526,8 @@ export function DashboardTable({
 
       if (key === "status") {
         result = result.filter((item) => item.status === filterVal);
+      } else if (key === "product_category") {
+        result = result.filter((item) => item.product_category === filterVal);
       } else if (
         key === "material_code" ||
         key === "material_description" ||
@@ -532,6 +588,7 @@ export function DashboardTable({
       const data = (filteredItems as EnrichedItem[]).map((item) => {
         const rowData: Record<string, string | number | null | undefined> = {
           "Material Code": item.material_code,
+          "Category": item.product_category,
           "Description": item.material_description,
           "Vendor": item.vendor,
           "Machine Population": item.machine_population,
@@ -548,18 +605,27 @@ export function DashboardTable({
         };
         // Month 1
         rowData[predictionMonthNames[0]] = item.month1_prediction !== null && item.month1_prediction !== undefined ? item.month1_prediction : "";
+        rowData[`${predictionMonthNames[0]} (Days)`] = item.month1_prediction_days !== null && item.month1_prediction_days !== undefined ? item.month1_prediction_days : "";
         rowData[poMonthNames[0]] = item.month1_po;
+        rowData[`${poMonthNames[0]} (Days)`] = item.month1_po_days;
         rowData[mesMonthNames[0]] = item.month1_mes;
+        rowData[`${mesMonthNames[0]} (Days)`] = item.month1_mes_days;
 
         // Month 2
         rowData[predictionMonthNames[1]] = item.month2_prediction !== null && item.month2_prediction !== undefined ? item.month2_prediction : "";
+        rowData[`${predictionMonthNames[1]} (Days)`] = item.month2_prediction_days !== null && item.month2_prediction_days !== undefined ? item.month2_prediction_days : "";
         rowData[poMonthNames[1]] = item.month2_po;
+        rowData[`${poMonthNames[1]} (Days)`] = item.month2_po_days;
         rowData[mesMonthNames[1]] = item.month2_mes;
+        rowData[`${mesMonthNames[1]} (Days)`] = item.month2_mes_days;
 
         // Month 3
         rowData[predictionMonthNames[2]] = item.month3_prediction !== null && item.month3_prediction !== undefined ? item.month3_prediction : "";
+        rowData[`${predictionMonthNames[2]} (Days)`] = item.month3_prediction_days !== null && item.month3_prediction_days !== undefined ? item.month3_prediction_days : "";
         rowData[poMonthNames[2]] = item.month3_po;
+        rowData[`${poMonthNames[2]} (Days)`] = item.month3_po_days;
         rowData[mesMonthNames[2]] = item.month3_mes;
+        rowData[`${mesMonthNames[2]} (Days)`] = item.month3_mes_days;
 
         return rowData;
       });
@@ -610,6 +676,26 @@ export function DashboardTable({
               ))}
             </SelectContent>
           </Select>
+
+          <Select
+            value={selectedCategory}
+            onValueChange={(val) => {
+              setSelectedCategory(val);
+              setCurrentPage(1);
+            }}
+          >
+            <SelectTrigger className="w-full sm:w-[170px] h-10 bg-background shadow-sm">
+              <SelectValue placeholder="All Categories" />
+            </SelectTrigger>
+            <SelectContent className="bg-background border border-border">
+              <SelectItem value="all">All Categories</SelectItem>
+              {categories.map((cat) => (
+                <SelectItem key={cat} value={cat}>
+                  {cat}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="flex items-center gap-3 text-sm">
@@ -651,6 +737,34 @@ export function DashboardTable({
             </DropdownMenuContent>
           </DropdownMenu>
 
+          <span className="text-muted-foreground hidden sm:inline">View:</span>
+          <div className="flex items-center border border-input rounded-md overflow-hidden bg-background h-8 mr-1 shadow-sm">
+            <button
+              type="button"
+              className={cn(
+                "h-full px-3 font-semibold cursor-pointer text-[11px] transition-all duration-150 focus:outline-none",
+                viewMode === "qty"
+                  ? "bg-primary text-primary-foreground"
+                  : "hover:bg-muted/70 text-muted-foreground"
+              )}
+              onClick={() => setViewMode("qty")}
+            >
+              Qty
+            </button>
+            <button
+              type="button"
+              className={cn(
+                "h-full px-3 font-semibold cursor-pointer text-[11px] transition-all duration-150 border-l border-input focus:outline-none",
+                viewMode === "days"
+                  ? "bg-primary text-primary-foreground"
+                  : "hover:bg-muted/70 text-muted-foreground"
+              )}
+              onClick={() => setViewMode("days")}
+            >
+              Days
+            </button>
+          </div>
+
           <span className="text-muted-foreground hidden sm:inline">Density:</span>
           <Button
             variant={tableDensity === "default" ? "default" : "outline"}
@@ -689,13 +803,14 @@ export function DashboardTable({
             <TableHeader className="bg-muted/50 sticky top-0 z-10">
               <TableRow>
                 {renderHeader("material_code", "Material Code")}
+                {renderHeader("product_category", "Category")}
                 {renderHeader("material_description", "Description")}
                 {renderHeader("vendor", "Vendor")}
                 {/* {renderHeader("machine_population", "Machine Population", "right")} */}
                 {renderHeader("current_stock", "GPC Stk.", "right")}
+                {renderHeader("coverage_days", "Coverage Days", "right")}
                 {renderHeader("lead_time", "Lead Time", "right")}
                 {renderHeader("lead_time_qty", "LT Qty.", "right")}
-                {/* {renderHeader("coverage_days", "Coverage Days", "right")} */}
                 {/* {renderHeader("delta", "Delta", "right")} */}
                 {/* {renderHeader("total_lead_time", "Total Lead Time", "right")} */}
                 {/* {renderHeader("three_m_avg", "3M Avg", "right")} */}
@@ -740,6 +855,11 @@ export function DashboardTable({
                       {!hiddenColumns.includes("material_code") && (
                         <TableCell className="font-medium truncate">{item.material_code}</TableCell>
                       )}
+                      {!hiddenColumns.includes("product_category") && (
+                        <TableCell className="truncate" title={item.product_category}>
+                          {item.product_category}
+                        </TableCell>
+                      )}
                       {!hiddenColumns.includes("material_description") && (
                         <TableCell
                           className="text-muted-foreground truncate"
@@ -756,6 +876,11 @@ export function DashboardTable({
                       {!hiddenColumns.includes("current_stock") && (
                         <TableCell className="text-center font-medium truncate">
                           {item.current_stock?.toFixed(1) || "0.0"}
+                        </TableCell>
+                      )}
+                      {!hiddenColumns.includes("coverage_days") && (
+                        <TableCell className="text-center font-medium truncate">
+                          {item.coverage_days >= 999999 ? "—" : item.coverage_days.toFixed(0)}
                         </TableCell>
                       )}
                       {!hiddenColumns.includes("lead_time") && (
@@ -801,67 +926,115 @@ export function DashboardTable({
 
                       {!hiddenColumns.includes("month1_prediction") && (
                         <TableCell className="text-center font-medium text-blue-600 bg-blue-200/30 dark:bg-blue-950/10">
-                          {item.month1_prediction !== null && item.month1_prediction !== undefined
-                            ? item.month1_prediction.toFixed(0)
-                            : "—"}
+                          {item.month1_prediction !== null && item.month1_prediction !== undefined ? (
+                            viewMode === "days" ? (
+                              <span>{item.month1_prediction_days ? `${item.month1_prediction_days.toFixed(0)}d` : "0d"}</span>
+                            ) : (
+                              <span>{item.month1_prediction.toFixed(0)}</span>
+                            )
+                          ) : (
+                            "—"
+                          )}
                         </TableCell>
                       )}
 
                       {!hiddenColumns.includes("month1_po") && (
                         <TableCell className="text-center font-medium text-blue-600 bg-blue-200/30 dark:bg-blue-950/10">
-                          {item.month1_po.toFixed(0)}
+                          {viewMode === "days" ? (
+                            <span>{item.month1_po_days ? `${item.month1_po_days.toFixed(0)}d` : "0d"}</span>
+                          ) : (
+                            <span>{item.month1_po.toFixed(0)}</span>
+                          )}
                         </TableCell>
                       )}
 
                       {!hiddenColumns.includes("month1_mes") && (
                         <TableCell className="text-center font-medium text-slate-700 dark:text-slate-300 bg-blue-200/30 dark:bg-blue-950/10">
-                          {item.month1_mes !== null && !isNaN(item.month1_mes)
-                            ? item.month1_mes.toFixed(0)
-                            : "—"}
+                          {item.month1_mes !== null && !isNaN(item.month1_mes) ? (
+                            viewMode === "days" ? (
+                              <span>{item.month1_mes_days ? `${item.month1_mes_days.toFixed(0)}d` : "0d"}</span>
+                            ) : (
+                              <span>{item.month1_mes.toFixed(0)}</span>
+                            )
+                          ) : (
+                            "—"
+                          )}
                         </TableCell>
                       )}
 
                       {!hiddenColumns.includes("month2_prediction") && (
                         <TableCell className="text-center font-medium text-blue-600 bg-amber-200/30 dark:bg-amber-950/10">
-                          {item.month2_prediction !== null && item.month2_prediction !== undefined
-                            ? item.month2_prediction.toFixed(0)
-                            : "—"}
+                          {item.month2_prediction !== null && item.month2_prediction !== undefined ? (
+                            viewMode === "days" ? (
+                              <span>{item.month2_prediction_days ? `${item.month2_prediction_days.toFixed(0)}d` : "0d"}</span>
+                            ) : (
+                              <span>{item.month2_prediction.toFixed(0)}</span>
+                            )
+                          ) : (
+                            "—"
+                          )}
                         </TableCell>
                       )}
 
                       {!hiddenColumns.includes("month2_po") && (
                         <TableCell className="text-center font-medium text-blue-600 bg-amber-200/30 dark:bg-amber-950/10">
-                          {item.month2_po.toFixed(0)}
+                          {viewMode === "days" ? (
+                            <span>{item.month2_po_days ? `${item.month2_po_days.toFixed(0)}d` : "0d"}</span>
+                          ) : (
+                            <span>{item.month2_po.toFixed(0)}</span>
+                          )}
                         </TableCell>
                       )}
 
                       {!hiddenColumns.includes("month2_mes") && (
                         <TableCell className="text-center font-medium text-slate-700 dark:text-slate-300 bg-amber-200/30 dark:bg-amber-950/10">
-                          {item.month2_mes !== null && !isNaN(item.month2_mes)
-                            ? item.month2_mes.toFixed(0)
-                            : "—"}
+                          {item.month2_mes !== null && !isNaN(item.month2_mes) ? (
+                            viewMode === "days" ? (
+                              <span>{item.month2_mes_days ? `${item.month2_mes_days.toFixed(0)}d` : "0d"}</span>
+                            ) : (
+                              <span>{item.month2_mes.toFixed(0)}</span>
+                            )
+                          ) : (
+                            "—"
+                          )}
                         </TableCell>
                       )}
 
                       {!hiddenColumns.includes("month3_prediction") && (
                         <TableCell className="text-center font-medium text-blue-600 bg-fuchsia-200/30 dark:bg-fuchsia-950/10">
-                          {item.month3_prediction !== null && item.month3_prediction !== undefined
-                            ? item.month3_prediction.toFixed(0)
-                            : "—"}
+                          {item.month3_prediction !== null && item.month3_prediction !== undefined ? (
+                            viewMode === "days" ? (
+                              <span>{item.month3_prediction_days ? `${item.month3_prediction_days.toFixed(0)}d` : "0d"}</span>
+                            ) : (
+                              <span>{item.month3_prediction.toFixed(0)}</span>
+                            )
+                          ) : (
+                            "—"
+                          )}
                         </TableCell>
                       )}
 
                       {!hiddenColumns.includes("month3_po") && (
                         <TableCell className="text-center font-medium text-blue-600 bg-fuchsia-200/30 dark:bg-fuchsia-950/10">
-                          {item.month3_po.toFixed(0)}
+                          {viewMode === "days" ? (
+                            <span>{item.month3_po_days ? `${item.month3_po_days.toFixed(0)}d` : "0d"}</span>
+                          ) : (
+                            <span>{item.month3_po.toFixed(0)}</span>
+                          )}
                         </TableCell>
                       )}
 
                       {!hiddenColumns.includes("month3_mes") && (
                         <TableCell className="text-center font-medium text-slate-700 dark:text-slate-300 bg-fuchsia-200/30 dark:bg-fuchsia-950/10">
-                          {item.month3_mes !== null && !isNaN(item.month3_mes)
-                            ? item.month3_mes.toFixed(0)
-                            : "—"}
+                          {item.month3_mes !== null && !isNaN(item.month3_mes) ? (
+                            viewMode === "days" ? (
+                              <span>{item.month3_mes_days ? `${item.month3_mes_days.toFixed(0)}d` : "0d"}</span>
+                            ) : (
+                              <span>{item.month3_mes.toFixed(0)}</span>
+                            )
+                          ) : (
+                            "—"
+                          )}
                         </TableCell>
                       )}
                     </TableRow>

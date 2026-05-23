@@ -23,53 +23,47 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-
-const navItems = [
-  {
-    name: "Overview",
-    href: "/",
-    icon: LayoutDashboard,
-  },
-  // {
-  //   name: "Pool Management",
-  //   href: "/pool",
-  //   icon: Shuffle,
-  // },
-  {
-    name: "Inventory Flow",
-    href: "/inventory",
-    icon: Inbox,
-  },
-  {
-    name: "Aging & Dead Stock",
-    href: "/aging",
-    icon: Package,
-  },
-  {
-    name: "Analytics",
-    href: "/analytics",
-    icon: BarChart2,
-  },
-  // {
-  //   name: "Forecast",
-  //   href: "/forecast",
-  //   icon: Binoculars,
-  // },
-  // {
-  //   name: "Users",
-  //   href: "/users",
-  //   icon: Users,
-  // },
-  {
-    name: "Admin",
-    href: "/admin",
-    icon: Settings,
-  },
-];
+import { useAuth } from "@/components/auth-provider";
 
 export function Sidebar() {
   const pathname = usePathname();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const { user } = useAuth();
+
+  const activeNavItems = [
+    {
+      name: "Overview",
+      href: "/",
+      icon: LayoutDashboard,
+    },
+    {
+      name: "Inventory Flow",
+      href: "/inventory",
+      icon: Inbox,
+    },
+    {
+      name: "Aging & Dead Stock",
+      href: "/aging",
+      icon: Package,
+    },
+    {
+      name: "Analytics",
+      href: "/analytics",
+      icon: BarChart2,
+    },
+    ...(user?.role === "admin" ? [
+      {
+        name: "Register User",
+        href: "/register",
+        icon: Users,
+      }
+    ] : []),
+    {
+      name: "Admin",
+      href: "/admin",
+      icon: Settings,
+    },
+  ];
 
   return (
     <TooltipProvider delayDuration={0}>
@@ -111,7 +105,7 @@ export function Sidebar() {
           </div>
 
           <nav className="space-y-1">
-            {navItems.map((item) => {
+            {activeNavItems.map((item) => {
               const isActive =
                 pathname === item.href ||
                 (item.href !== "/" && pathname.startsWith(item.href));

@@ -127,7 +127,7 @@ export function DashboardTable({
     current_stock: 110,
     coverage_days: 140,
     lead_time: 110,
-    lead_time_qty: 110,
+    lead_time_qty: 100,
     delta: 95,
     total_lead_time: 130,
     three_m_avg: 110,
@@ -754,27 +754,27 @@ export function DashboardTable({
                         </TableCell>
                       )}
                       {!hiddenColumns.includes("current_stock") && (
-                        <TableCell className="text-right font-medium truncate">
+                        <TableCell className="text-center font-medium truncate">
                           {item.current_stock?.toFixed(1) || "0.0"}
                         </TableCell>
                       )}
                       {!hiddenColumns.includes("lead_time") && (
-                        <TableCell className="text-right font-medium truncate">
+                        <TableCell className="text-center font-medium truncate">
                           {item.lead_time || "-"}
                         </TableCell>
                       )}
                       {!hiddenColumns.includes("lead_time_qty") && (
-                        <TableCell className="text-right font-medium truncate">
+                        <TableCell className="text-center font-medium truncate">
                           {item.lead_time_qty?.toFixed(0) || "-"}
                         </TableCell>
                       )}
                       {!hiddenColumns.includes("twelve_m_avg") && (
-                        <TableCell className="text-right font-medium truncate">
+                        <TableCell className="text-center font-medium truncate">
                           {item.twelve_m_avg?.toFixed(0) || "-"}
                         </TableCell>
                       )}
                       {!hiddenColumns.includes("price") && (
-                        <TableCell className="text-right font-medium truncate">
+                        <TableCell className="text-center font-medium truncate">
                           {item.price != null && item.price !== 0
                             ? `₹${item.price.toFixed(2)}`
                             : "-"}
@@ -800,7 +800,7 @@ export function DashboardTable({
                       )}
 
                       {!hiddenColumns.includes("month1_prediction") && (
-                        <TableCell className="text-right font-medium text-blue-600 bg-blue-200/30 dark:bg-blue-950/10">
+                        <TableCell className="text-center font-medium text-blue-600 bg-blue-200/30 dark:bg-blue-950/10">
                           {item.month1_prediction !== null && item.month1_prediction !== undefined
                             ? item.month1_prediction.toFixed(0)
                             : "—"}
@@ -808,13 +808,13 @@ export function DashboardTable({
                       )}
 
                       {!hiddenColumns.includes("month1_po") && (
-                        <TableCell className="text-right font-medium text-blue-600 bg-blue-200/30 dark:bg-blue-950/10">
+                        <TableCell className="text-center font-medium text-blue-600 bg-blue-200/30 dark:bg-blue-950/10">
                           {item.month1_po.toFixed(0)}
                         </TableCell>
                       )}
 
                       {!hiddenColumns.includes("month1_mes") && (
-                        <TableCell className="text-right font-medium text-slate-700 dark:text-slate-300 bg-blue-200/30 dark:bg-blue-950/10">
+                        <TableCell className="text-center font-medium text-slate-700 dark:text-slate-300 bg-blue-200/30 dark:bg-blue-950/10">
                           {item.month1_mes !== null && !isNaN(item.month1_mes)
                             ? item.month1_mes.toFixed(0)
                             : "—"}
@@ -822,7 +822,7 @@ export function DashboardTable({
                       )}
 
                       {!hiddenColumns.includes("month2_prediction") && (
-                        <TableCell className="text-right font-medium text-blue-600 bg-amber-200/30 dark:bg-amber-950/10">
+                        <TableCell className="text-center font-medium text-blue-600 bg-amber-200/30 dark:bg-amber-950/10">
                           {item.month2_prediction !== null && item.month2_prediction !== undefined
                             ? item.month2_prediction.toFixed(0)
                             : "—"}
@@ -830,13 +830,13 @@ export function DashboardTable({
                       )}
 
                       {!hiddenColumns.includes("month2_po") && (
-                        <TableCell className="text-right font-medium text-blue-600 bg-amber-200/30 dark:bg-amber-950/10">
+                        <TableCell className="text-center font-medium text-blue-600 bg-amber-200/30 dark:bg-amber-950/10">
                           {item.month2_po.toFixed(0)}
                         </TableCell>
                       )}
 
                       {!hiddenColumns.includes("month2_mes") && (
-                        <TableCell className="text-right font-medium text-slate-700 dark:text-slate-300 bg-amber-200/30 dark:bg-amber-950/10">
+                        <TableCell className="text-center font-medium text-slate-700 dark:text-slate-300 bg-amber-200/30 dark:bg-amber-950/10">
                           {item.month2_mes !== null && !isNaN(item.month2_mes)
                             ? item.month2_mes.toFixed(0)
                             : "—"}
@@ -844,7 +844,7 @@ export function DashboardTable({
                       )}
 
                       {!hiddenColumns.includes("month3_prediction") && (
-                        <TableCell className="text-right font-medium text-blue-600 bg-fuchsia-200/30 dark:bg-fuchsia-950/10">
+                        <TableCell className="text-center font-medium text-blue-600 bg-fuchsia-200/30 dark:bg-fuchsia-950/10">
                           {item.month3_prediction !== null && item.month3_prediction !== undefined
                             ? item.month3_prediction.toFixed(0)
                             : "—"}
@@ -852,13 +852,13 @@ export function DashboardTable({
                       )}
 
                       {!hiddenColumns.includes("month3_po") && (
-                        <TableCell className="text-right font-medium text-blue-600 bg-fuchsia-200/30 dark:bg-fuchsia-950/10">
+                        <TableCell className="text-center font-medium text-blue-600 bg-fuchsia-200/30 dark:bg-fuchsia-950/10">
                           {item.month3_po.toFixed(0)}
                         </TableCell>
                       )}
 
                       {!hiddenColumns.includes("month3_mes") && (
-                        <TableCell className="text-right font-medium text-slate-700 dark:text-slate-300 bg-fuchsia-200/30 dark:bg-fuchsia-950/10">
+                        <TableCell className="text-center font-medium text-slate-700 dark:text-slate-300 bg-fuchsia-200/30 dark:bg-fuchsia-950/10">
                           {item.month3_mes !== null && !isNaN(item.month3_mes)
                             ? item.month3_mes.toFixed(0)
                             : "—"}

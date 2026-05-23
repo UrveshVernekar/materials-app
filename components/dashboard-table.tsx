@@ -407,29 +407,14 @@ export function DashboardTable({
 
   const enrichedItems = useMemo(() => {
     return allItems.map((item) => {
-      const month1_po = Math.max(
-        0,
-        (item.lead_time_qty || 0) - (item.current_stock || 0) + (item.month1_prediction || 0)
-      );
-      const month1_mes = Math.max(
-        0,
-        (item.current_stock || 0) - (item.month1_prediction || 0) + month1_po
-      );
-
-      const month2_po = Math.max(0, month1_po + (item.month2_prediction || 0));
-      const month2_mes = Math.max(0, month1_mes + month2_po - (item.month2_prediction || 0));
-
-      const month3_po = Math.max(0, month2_po + (item.month3_prediction || 0));
-      const month3_mes = Math.max(0, month2_mes + month3_po - (item.month3_prediction || 0));
-
       return {
         ...item,
-        month1_po,
-        month1_mes,
-        month2_po,
-        month2_mes,
-        month3_po,
-        month3_mes,
+        month1_po: item.month1_po || 0,
+        month1_mes: item.month1_mes || 0,
+        month2_po: item.month2_po || 0,
+        month2_mes: item.month2_mes || 0,
+        month3_po: item.month3_po || 0,
+        month3_mes: item.month3_mes || 0,
       };
     });
   }, [allItems]);

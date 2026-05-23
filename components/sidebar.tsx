@@ -56,13 +56,13 @@ export function Sidebar() {
         name: "Register User",
         href: "/register",
         icon: Users,
-      }
+      },
+      {
+        name: "Admin",
+        href: "/admin",
+        icon: Settings,
+      },
     ] : []),
-    {
-      name: "Admin",
-      href: "/admin",
-      icon: Settings,
-    },
   ];
 
   return (

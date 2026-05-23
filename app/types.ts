@@ -14,8 +14,14 @@ export type Item = {
   delta: number;
   total_lead_time: number;
   month1_prediction?: number;
+  month1_po?: number;
+  month1_mes?: number;
   month2_prediction?: number;
+  month2_po?: number;
+  month2_mes?: number;
   month3_prediction?: number;
+  month3_po?: number;
+  month3_mes?: number;
   month1_date?: string;
   month2_date?: string;
   month3_date?: string;

@@ -12,7 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Checkbox } from "@/components/ui/checkbox";
+
 import {
   Select,
   SelectContent,
@@ -27,6 +27,14 @@ import {
   ChevronRight,
   Loader2,
   Eye,
+  TrendingUpDown,
+  ShoppingCart,
+  Box,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown,
+  Filter,
+  X
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -38,6 +46,15 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { Item } from "@/app/types";
+
+export interface EnrichedItem extends Item {
+  month1_po: number;
+  month1_mes: number;
+  month2_po: number;
+  month2_mes: number;
+  month3_po: number;
+  month3_mes: number;
+}
 
 interface DashboardTableProps {
   allItems: Item[];
@@ -52,12 +69,44 @@ export function DashboardTable({
 }: DashboardTableProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [selectedRows, setSelectedRows] = useState<string[]>([]);
   const [tableDensity, setTableDensity] = useState<"default" | "compact">("default");
   const [pageSize, setPageSize] = useState("10");
   const [currentPage, setCurrentPage] = useState(1);
   const [isExporting, setIsExporting] = useState(false);
-  const [selectedStatus, setSelectedStatus] = useState<string>("all");
+  const [filters, setFilters] = useState<Record<string, string>>({});
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: "asc" | "desc" | null }>({
+    key: "",
+    direction: null,
+  });
+
+  const selectedStatus = filters.status || "all";
+  const setSelectedStatus = (statusVal: string) => {
+    setFilters((prev) => ({
+      ...prev,
+      status: statusVal === "all" ? "" : statusVal,
+    }));
+  };
+
+  const handleFilterChange = (key: string, value: string) => {
+    setFilters((prev) => ({
+      ...prev,
+      [key]: value,
+    }));
+    setCurrentPage(1);
+  };
+
+  const handleSort = (key: string) => {
+    setSortConfig((prev) => {
+      if (prev.key === key) {
+        if (prev.direction === "asc") {
+          return { key, direction: "desc" };
+        } else if (prev.direction === "desc") {
+          return { key: "", direction: null };
+        }
+      }
+      return { key, direction: "asc" };
+    });
+  };
 
   const statuses = useMemo(() => {
     const set = new Set<string>();
@@ -71,11 +120,11 @@ export function DashboardTable({
 
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>({
     selection: 48,
-    material_code: 60,
-    material_description: 160,
-    vendor: 50,
+    material_code: 140,
+    material_description: 220,
+    vendor: 120,
     machine_population: 170,
-    current_stock: 50,
+    current_stock: 110,
     coverage_days: 140,
     lead_time: 110,
     lead_time_qty: 110,
@@ -83,17 +132,17 @@ export function DashboardTable({
     total_lead_time: 130,
     three_m_avg: 110,
     twelve_m_avg: 110,
-    price: 50,
-    status: 50,
-    month1_prediction: 60,
-    month1_po: 80,
-    month2_prediction: 60,
-    month2_po: 80,
-    month3_prediction: 60,
-    month3_po: 80,
-    month1_mes: 80,
-    month2_mes: 80,
-    month3_mes: 80,
+    price: 90,
+    status: 115,
+    month1_prediction: 100,
+    month1_po: 100,
+    month1_mes: 100,
+    month2_prediction: 100,
+    month2_po: 100,
+    month2_mes: 100,
+    month3_prediction: 100,
+    month3_po: 100,
+    month3_mes: 100,
   });
 
   const predictionMonthNames = useMemo(() => {
@@ -107,7 +156,7 @@ export function DashboardTable({
           const dateObj = new Date(dateStr);
           const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
           return `${months[dateObj.getMonth()]}-${dateObj.getFullYear().toString().slice(-2)} Forecast`;
-        } catch (e) {
+        } catch {
           return null;
         }
       };
@@ -150,8 +199,10 @@ export function DashboardTable({
     { id: "material_code", label: "Material Code" },
     { id: "material_description", label: "Description" },
     { id: "vendor", label: "Vendor" },
-    { id: "current_stock", label: "Current Stock" },
-    { id: "lead_time_qty", label: "Lead Time Qty" },
+    { id: "current_stock", label: "GPC Stk." },
+    { id: "lead_time", label: "Lead Time" },
+    { id: "lead_time_qty", label: "LT Qty." },
+    { id: "twelve_m_avg", label: "12M Avg" },
     { id: "price", label: "Price" },
     { id: "status", label: "Status" },
     { id: "month1_prediction", label: predictionMonthNames[0] },
@@ -198,25 +249,145 @@ export function DashboardTable({
     document.addEventListener("pointerup", handlePointerUp);
   };
 
+  const getMonthPart = (headerText: string) => {
+    if (headerText.endsWith(" Forecast")) {
+      return headerText.slice(0, -9);
+    }
+    if (headerText.startsWith("PO in ")) {
+      return headerText.slice(6);
+    }
+    if (headerText.startsWith("MES in ")) {
+      return headerText.slice(7);
+    }
+    return headerText;
+  };
+
+  const renderSortIcon = (key: string) => {
+    const isSorted = sortConfig.key === key;
+    if (!isSorted) {
+      return <ArrowUpDown className="w-3.5 h-3.5 opacity-40 hover:opacity-100 transition-opacity flex-shrink-0" />;
+    }
+    return sortConfig.direction === "asc" ? (
+      <ArrowUp className="w-3.5 h-3.5 text-blue-500 dark:text-blue-400 flex-shrink-0" />
+    ) : (
+      <ArrowDown className="w-3.5 h-3.5 text-blue-500 dark:text-blue-400 flex-shrink-0" />
+    );
+  };
+
+  const renderFilterInput = (key: string) => {
+    if (key === "status") {
+      return (
+        <Select
+          value={filters.status || "all"}
+          onValueChange={(val) => handleFilterChange("status", val === "all" ? "" : val)}
+        >
+          <SelectTrigger className="h-7 text-[11px] px-2 bg-background border border-muted-foreground/20 font-normal w-full shadow-none focus:ring-1 focus:ring-blue-500 rounded">
+            <SelectValue placeholder="All" />
+          </SelectTrigger>
+          <SelectContent className="bg-background border border-border">
+            <SelectItem value="all">All</SelectItem>
+            {statuses.map((status) => (
+              <SelectItem key={status} value={status}>
+                {status}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      );
+    }
+
+    return (
+      <div className="relative w-full">
+        <Filter className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground/50 pointer-events-none" />
+        <Input
+          className="h-7 text-xs pl-6 pr-5 bg-background border border-muted-foreground/20 rounded font-normal w-full shadow-none focus-visible:ring-1 focus-visible:ring-blue-500"
+          value={filters[key] || ""}
+          onChange={(e) => handleFilterChange(key, e.target.value)}
+        />
+        {(filters[key] || "").length > 0 && (
+          <button
+            onClick={() => handleFilterChange(key, "")}
+            className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-[10px] p-0.5 line-none font-bold"
+            title="Clear filter"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        )}
+      </div>
+    );
+  };
+
   const renderHeader = (
     key: keyof typeof columnWidths,
-    label: React.ReactNode,
+    label: string,
     align: "left" | "right" | "center" = "left",
     extraClass: string = ""
   ) => {
     if (hiddenColumns.includes(key)) return null;
+
+    let displayLabel: React.ReactNode = label;
+    let tooltipTitle: string = label;
+
+    if (key.endsWith("_prediction")) {
+      const monthStr = getMonthPart(label);
+      tooltipTitle = `${monthStr} Forecast`;
+      displayLabel = (
+        <span className={cn("inline-flex items-center gap-1.5", align === "right" && "justify-end", align === "center" && "justify-center")}>
+          <span>{monthStr}</span>
+          <TrendingUpDown className="w-3.5 h-3.5 text-blue-500 dark:text-blue-400 flex-shrink-0" />
+        </span>
+      );
+    } else if (key.endsWith("_po")) {
+      const monthStr = getMonthPart(label);
+      tooltipTitle = `${monthStr} Purchase Order`;
+      displayLabel = (
+        <span className={cn("inline-flex items-center gap-1.5", align === "right" && "justify-end", align === "center" && "justify-center")}>
+          <span>{monthStr}</span>
+          <ShoppingCart className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400 flex-shrink-0" />
+        </span>
+      );
+    } else if (key.endsWith("_mes")) {
+      const monthStr = getMonthPart(label);
+      tooltipTitle = `${monthStr} MES (Month End Stock)`;
+      displayLabel = (
+        <span className={cn("inline-flex items-center gap-1.5", align === "right" && "justify-end", align === "center" && "justify-center")}>
+          <span>{monthStr}</span>
+          <Box className="w-3.5 h-3.5 text-purple-500 dark:text-purple-400 flex-shrink-0" />
+        </span>
+      );
+    }
+
     return (
       <TableHead
         style={{ width: columnWidths[key] }}
         className={cn(
-          "font-medium text-muted-foreground relative group select-none overflow-hidden whitespace-normal break-words h-auto align-middle",
-          tableDensity === "compact" ? "py-2 px-1.5" : "py-3 px-2",
+          "font-medium text-muted-foreground relative group select-none overflow-hidden whitespace-normal break-words h-auto align-middle pb-2.5 pt-2 px-2",
           align === "right" && "text-right",
           align === "center" && "text-center",
           extraClass
         )}
+        title={tooltipTitle}
       >
-        <div className="whitespace-normal break-words leading-tight pr-2">{label}</div>
+        <div className="flex flex-col gap-1.5 h-full justify-between">
+          <div
+            className={cn(
+              "flex items-center gap-1 cursor-pointer hover:text-foreground transition-colors leading-tight",
+              align === "right" && "justify-end",
+              align === "center" && "justify-center"
+            )}
+            onClick={() => handleSort(key)}
+          >
+            <div className="truncate">{displayLabel}</div>
+            <div className="flex-shrink-0">
+              {renderSortIcon(key)}
+            </div>
+          </div>
+
+          <div className="mt-1 w-full" onClick={(e) => e.stopPropagation()}>
+            {renderFilterInput(key)}
+          </div>
+        </div>
+
         <div
           onPointerDown={(e) => startResize(e, key)}
           onClick={(e) => e.stopPropagation()}
@@ -234,12 +405,73 @@ export function DashboardTable({
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  const filteredItems = useMemo(() => {
-    let result = allItems;
+  const enrichedItems = useMemo(() => {
+    return allItems.map((item) => {
+      const month1_po = Math.max(
+        0,
+        (item.lead_time_qty || 0) - (item.current_stock || 0) + (item.month1_prediction || 0)
+      );
+      const month1_mes = Math.max(
+        0,
+        (item.current_stock || 0) - (item.month1_prediction || 0) + month1_po
+      );
 
-    if (selectedStatus !== "all") {
-      result = result.filter((item) => item.status === selectedStatus);
+      const month2_po = Math.max(0, month1_po + (item.month2_prediction || 0));
+      const month2_mes = Math.max(0, month1_mes + month2_po - (item.month2_prediction || 0));
+
+      const month3_po = Math.max(0, month2_po + (item.month3_prediction || 0));
+      const month3_mes = Math.max(0, month2_mes + month3_po - (item.month3_prediction || 0));
+
+      return {
+        ...item,
+        month1_po,
+        month1_mes,
+        month2_po,
+        month2_mes,
+        month3_po,
+        month3_mes,
+      };
+    });
+  }, [allItems]);
+
+  const matchStringFilter = (val: string | undefined | null, filterStr: string): boolean => {
+    if (!filterStr) return true;
+    if (!val) return false;
+    return val.toLowerCase().includes(filterStr.toLowerCase().trim());
+  };
+
+  const matchNumericFilter = (val: number | undefined | null, filterStr: string): boolean => {
+    if (!filterStr) return true;
+    if (val === undefined || val === null) return false;
+
+    const trimmed = filterStr.trim();
+
+    if (trimmed.startsWith(">=")) {
+      const num = parseFloat(trimmed.slice(2).trim());
+      return isNaN(num) ? true : val >= num;
     }
+    if (trimmed.startsWith("<=")) {
+      const num = parseFloat(trimmed.slice(2).trim());
+      return isNaN(num) ? true : val <= num;
+    }
+    if (trimmed.startsWith(">")) {
+      const num = parseFloat(trimmed.slice(1).trim());
+      return isNaN(num) ? true : val > num;
+    }
+    if (trimmed.startsWith("<")) {
+      const num = parseFloat(trimmed.slice(1).trim());
+      return isNaN(num) ? true : val < num;
+    }
+    if (trimmed.startsWith("=")) {
+      const num = parseFloat(trimmed.slice(1).trim());
+      return isNaN(num) ? true : val === num;
+    }
+
+    return val.toString().includes(trimmed);
+  };
+
+  const filteredItems = useMemo(() => {
+    let result = enrichedItems;
 
     if (debouncedSearch) {
       const lower = debouncedSearch.toLowerCase();
@@ -250,46 +482,78 @@ export function DashboardTable({
       );
     }
 
+    Object.entries(filters).forEach(([key, filterVal]) => {
+      if (!filterVal) return;
+
+      if (key === "status") {
+        result = result.filter((item) => item.status === filterVal);
+      } else if (
+        key === "material_code" ||
+        key === "material_description" ||
+        key === "vendor"
+      ) {
+        result = result.filter((item) =>
+          matchStringFilter(item[key as keyof Item] as string, filterVal)
+        );
+      } else {
+        result = result.filter((item) =>
+          matchNumericFilter(item[key as keyof typeof item] as number, filterVal)
+        );
+      }
+    });
+
     return result;
-  }, [allItems, selectedStatus, debouncedSearch]);
+  }, [enrichedItems, debouncedSearch, filters]);
+
+  const sortedItems = useMemo(() => {
+    if (!sortConfig.key || !sortConfig.direction) return filteredItems;
+
+    const key = sortConfig.key;
+    const direction = sortConfig.direction;
+
+    return [...filteredItems].sort((a, b) => {
+      let aVal = a[key as keyof typeof a];
+      let bVal = b[key as keyof typeof b];
+
+      if (aVal === undefined || aVal === null) aVal = "";
+      if (bVal === undefined || bVal === null) bVal = "";
+
+      if (typeof aVal === "number" && typeof bVal === "number") {
+        return direction === "asc" ? aVal - bVal : bVal - aVal;
+      }
+
+      const aStr = String(aVal).toLowerCase();
+      const bStr = String(bVal).toLowerCase();
+
+      if (aStr < bStr) return direction === "asc" ? -1 : 1;
+      if (aStr > bStr) return direction === "asc" ? 1 : -1;
+      return 0;
+    });
+  }, [filteredItems, sortConfig]);
 
   const items = useMemo(() => {
     const size = Number(pageSize);
     const start = (currentPage - 1) * size;
-    return filteredItems.slice(start, start + size);
-  }, [filteredItems, currentPage, pageSize]);
+    return sortedItems.slice(start, start + size);
+  }, [sortedItems, currentPage, pageSize]);
 
   const totalItems = filteredItems.length;
   const totalPages = Math.ceil(totalItems / Number(pageSize));
-
-  const toggleRowSelection = (id: string) => {
-    setSelectedRows((prev) =>
-      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id],
-    );
-  };
-
-  const toggleAll = () => {
-    if (selectedRows.length === items.length && items.length > 0) {
-      setSelectedRows([]);
-    } else {
-      setSelectedRows(items.map((i) => i.material_code));
-    }
-  };
 
   const handleExport = async () => {
     try {
       setIsExporting(true);
 
-      const data = filteredItems.map((item: any) => {
-        const rowData: Record<string, any> = {
+      const data = (filteredItems as EnrichedItem[]).map((item) => {
+        const rowData: Record<string, string | number | null | undefined> = {
           "Material Code": item.material_code,
           "Description": item.material_description,
           "Vendor": item.vendor,
           "Machine Population": item.machine_population,
-          "Current Stock": item.current_stock,
+          "GPC Stk.": item.current_stock,
           "Coverage (Days)": item.coverage_days,
           "Lead Time": item.lead_time,
-          "Lead Time Qty": item.lead_time_qty,
+          "LT Qty.": item.lead_time_qty,
           "Delta": item.delta,
           "Total Lead Time": item.total_lead_time,
           "3M Avg": item.three_m_avg,
@@ -299,27 +563,18 @@ export function DashboardTable({
         };
         // Month 1
         rowData[predictionMonthNames[0]] = item.month1_prediction !== null && item.month1_prediction !== undefined ? item.month1_prediction : "";
-        const m1Po = (item?.lead_time_qty || 0) - (item?.current_stock || 0) + (item?.month1_prediction || 0);
-        const m1PoClamped = m1Po < 0 ? 0 : m1Po;
-        rowData[poMonthNames[0]] = m1PoClamped;
-        let m1Mes = (item?.current_stock || 0) - (item?.month1_prediction || 0) + m1PoClamped;
-        rowData[mesMonthNames[0]] = m1Mes;
+        rowData[poMonthNames[0]] = item.month1_po;
+        rowData[mesMonthNames[0]] = item.month1_mes;
 
         // Month 2
         rowData[predictionMonthNames[1]] = item.month2_prediction !== null && item.month2_prediction !== undefined ? item.month2_prediction : "";
-        const m2Po = m1PoClamped + (item?.month2_prediction || 0);
-        const m2PoClamped = m2Po < 0 ? 0 : m2Po;
-        rowData[poMonthNames[1]] = m2PoClamped;
-        const m2Mes = m1Mes + m2PoClamped - (item?.month2_prediction || 0);
-        rowData[mesMonthNames[1]] = m2Mes;
+        rowData[poMonthNames[1]] = item.month2_po;
+        rowData[mesMonthNames[1]] = item.month2_mes;
 
         // Month 3
         rowData[predictionMonthNames[2]] = item.month3_prediction !== null && item.month3_prediction !== undefined ? item.month3_prediction : "";
-        const m3Po = m2PoClamped + (item?.month3_prediction || 0);
-        const m3PoClamped = m3Po < 0 ? 0 : m3Po;
-        rowData[poMonthNames[2]] = m3PoClamped;
-        const m3Mes = m2Mes + m3PoClamped - (item?.month3_prediction || 0);
-        rowData[mesMonthNames[2]] = m3Mes;
+        rowData[poMonthNames[2]] = item.month3_po;
+        rowData[mesMonthNames[2]] = item.month3_mes;
 
         return rowData;
       });
@@ -442,7 +697,7 @@ export function DashboardTable({
               tableLayout: "fixed",
               width: Object.entries(columnWidths)
                 .filter(([key]) => !hiddenColumns.includes(key) && toggleableColumns.some(col => col.id === key))
-                .reduce((sum, [_, width]) => sum + width, 0),
+                .reduce((sum, entry) => sum + entry[1], 0),
               minWidth: "100%",
             }}
           >
@@ -452,26 +707,26 @@ export function DashboardTable({
                 {renderHeader("material_description", "Description")}
                 {renderHeader("vendor", "Vendor")}
                 {/* {renderHeader("machine_population", "Machine Population", "right")} */}
-                {renderHeader("current_stock", "Current Stock", "right")}
-                {renderHeader("lead_time_qty", "Lead Time Qty", "right")}
+                {renderHeader("current_stock", "GPC Stk.", "right")}
+                {renderHeader("lead_time", "Lead Time", "right")}
+                {renderHeader("lead_time_qty", "LT Qty.", "right")}
                 {/* {renderHeader("coverage_days", "Coverage Days", "right")} */}
-                {/* {renderHeader("lead_time", "Lead Time", "right")} */}
                 {/* {renderHeader("delta", "Delta", "right")} */}
                 {/* {renderHeader("total_lead_time", "Total Lead Time", "right")} */}
                 {/* {renderHeader("three_m_avg", "3M Avg", "right")} */}
-                {/* {renderHeader("twelve_m_avg", "12M Avg", "right")} */}
+                {renderHeader("twelve_m_avg", "12M Avg", "right")}
                 {renderHeader("price", "Price", "right")}
                 {renderHeader("status", "Status", "center")}
 
-                {renderHeader("month1_prediction", predictionMonthNames[0], "right")}
-                {renderHeader("month1_po", poMonthNames[0], "right")}
-                {renderHeader("month1_mes", mesMonthNames[0], "right")}
-                {renderHeader("month2_prediction", predictionMonthNames[1], "right")}
-                {renderHeader("month2_po", poMonthNames[1], "right")}
-                {renderHeader("month2_mes", mesMonthNames[1], "right")}
-                {renderHeader("month3_prediction", predictionMonthNames[2], "right")}
-                {renderHeader("month3_po", poMonthNames[2], "right")}
-                {renderHeader("month3_mes", mesMonthNames[2], "right")}
+                {renderHeader("month1_prediction", predictionMonthNames[0], "right", "bg-blue-200/40 dark:bg-blue-950/20")}
+                {renderHeader("month1_po", poMonthNames[0], "right", "bg-blue-200/40 dark:bg-blue-950/20")}
+                {renderHeader("month1_mes", mesMonthNames[0], "right", "bg-blue-200/40 dark:bg-blue-950/20")}
+                {renderHeader("month2_prediction", predictionMonthNames[1], "right", "bg-amber-200/40 dark:bg-amber-950/20")}
+                {renderHeader("month2_po", poMonthNames[1], "right", "bg-amber-200/40 dark:bg-amber-950/20")}
+                {renderHeader("month2_mes", mesMonthNames[1], "right", "bg-amber-200/40 dark:bg-amber-950/20")}
+                {renderHeader("month3_prediction", predictionMonthNames[2], "right", "bg-fuchsia-200/40 dark:bg-fuchsia-950/20")}
+                {renderHeader("month3_po", poMonthNames[2], "right", "bg-fuchsia-200/40 dark:bg-fuchsia-950/20")}
+                {renderHeader("month3_mes", mesMonthNames[2], "right", "bg-fuchsia-200/40 dark:bg-fuchsia-950/20")}
               </TableRow>
             </TableHeader>
 
@@ -488,17 +743,6 @@ export function DashboardTable({
                 </TableRow>
               ) : (
                 items.map((item) => {
-                  const month1Po =
-                    (item?.lead_time_qty || 0) -
-                    (item?.current_stock || 0) +
-                    (item?.month1_prediction || 0);
-                  const month2Po = month1Po + (item?.month2_prediction || 0);
-                  const month3Po = month2Po + (item?.month3_prediction || 0);
-
-                  const mes1 = item?.current_stock - (item?.month1_prediction || 0) + month1Po;
-                  const mes2 = mes1 + month2Po - (item?.month2_prediction || 0);
-                  const mes3 = mes2 + month3Po - (item?.month3_prediction || 0);
-
                   return (
                     <TableRow
                       key={item.material_code}
@@ -524,14 +768,14 @@ export function DashboardTable({
                           {item.vendor}
                         </TableCell>
                       )}
-                      {/* {!hiddenColumns.includes("machine_population") && (
-                      <TableCell className="text-right font-medium truncate">
-                        {item.machine_population?.toFixed(0) || "0"}
-                      </TableCell>
-                    )} */}
                       {!hiddenColumns.includes("current_stock") && (
                         <TableCell className="text-right font-medium truncate">
                           {item.current_stock?.toFixed(1) || "0.0"}
+                        </TableCell>
+                      )}
+                      {!hiddenColumns.includes("lead_time") && (
+                        <TableCell className="text-right font-medium truncate">
+                          {item.lead_time || "-"}
                         </TableCell>
                       )}
                       {!hiddenColumns.includes("lead_time_qty") && (
@@ -539,45 +783,11 @@ export function DashboardTable({
                           {item.lead_time_qty?.toFixed(0) || "-"}
                         </TableCell>
                       )}
-                      {/* {!hiddenColumns.includes("coverage_days") && (
-                      <TableCell className="text-right truncate">
-                        <div
-                          className={cn(
-                            "font-medium",
-                            item.coverage_days < 30
-                              ? "text-red-600"
-                              : item.coverage_days <= 60
-                                ? "text-orange-500"
-                                : "text-emerald-600"
-                          )}
-                        >
-                          {item.coverage_days?.toFixed(1) || "0.0"}
-                        </div>
-                      </TableCell>
-                    )} */}
-                      {/* {!hiddenColumns.includes("lead_time") && (
-                      <TableCell className="text-right truncate">
-                        {item.lead_time?.toFixed(0) || "0"}
-                      </TableCell>
-                    )} */}
-                      {/* {!hiddenColumns.includes("delta") && (
-                      <TableCell className="text-right truncate">{item.delta?.toFixed(0) || "0"}</TableCell>
-                    )} */}
-                      {/* {!hiddenColumns.includes("total_lead_time") && (
-                      <TableCell className="text-right truncate">
-                        {item.total_lead_time?.toFixed(0) || "0"}
-                      </TableCell>
-                    )} */}
-                      {/* {!hiddenColumns.includes("three_m_avg") && (
-                      <TableCell className="text-right truncate">
-                        {item.three_m_avg?.toFixed(2) || "0.00"}
-                      </TableCell>
-                    )} */}
-                      {/* {!hiddenColumns.includes("twelve_m_avg") && (
-                      <TableCell className="text-right truncate">
-                        {item.twelve_m_avg?.toFixed(2) || "0.00"}
-                      </TableCell>
-                    )} */}
+                      {!hiddenColumns.includes("twelve_m_avg") && (
+                        <TableCell className="text-right font-medium truncate">
+                          {item.twelve_m_avg?.toFixed(0) || "-"}
+                        </TableCell>
+                      )}
                       {!hiddenColumns.includes("price") && (
                         <TableCell className="text-right font-medium truncate">
                           {item.price != null && item.price !== 0
@@ -605,7 +815,7 @@ export function DashboardTable({
                       )}
 
                       {!hiddenColumns.includes("month1_prediction") && (
-                        <TableCell className="text-right font-medium text-blue-600">
+                        <TableCell className="text-right font-medium text-blue-600 bg-blue-200/30 dark:bg-blue-950/10">
                           {item.month1_prediction !== null && item.month1_prediction !== undefined
                             ? item.month1_prediction.toFixed(0)
                             : "—"}
@@ -613,21 +823,21 @@ export function DashboardTable({
                       )}
 
                       {!hiddenColumns.includes("month1_po") && (
-                        <TableCell className="text-right font-medium text-blue-600">
-                          {month1Po < 0 ? 0 : (month1Po).toFixed(0)}
+                        <TableCell className="text-right font-medium text-blue-600 bg-blue-200/30 dark:bg-blue-950/10">
+                          {item.month1_po.toFixed(0)}
                         </TableCell>
                       )}
 
                       {!hiddenColumns.includes("month1_mes") && (
-                        <TableCell className="text-right font-medium text-slate-700 dark:text-slate-300">
-                          {mes1 !== null && !isNaN(mes1)
-                            ? Math.max(0, mes1).toFixed(0)
+                        <TableCell className="text-right font-medium text-slate-700 dark:text-slate-300 bg-blue-200/30 dark:bg-blue-950/10">
+                          {item.month1_mes !== null && !isNaN(item.month1_mes)
+                            ? item.month1_mes.toFixed(0)
                             : "—"}
                         </TableCell>
                       )}
 
                       {!hiddenColumns.includes("month2_prediction") && (
-                        <TableCell className="text-right font-medium text-blue-600">
+                        <TableCell className="text-right font-medium text-blue-600 bg-amber-200/30 dark:bg-amber-950/10">
                           {item.month2_prediction !== null && item.month2_prediction !== undefined
                             ? item.month2_prediction.toFixed(0)
                             : "—"}
@@ -635,21 +845,21 @@ export function DashboardTable({
                       )}
 
                       {!hiddenColumns.includes("month2_po") && (
-                        <TableCell className="text-right font-medium text-blue-600">
-                          {month2Po < 0 ? 0 : (month2Po).toFixed(0)}
+                        <TableCell className="text-right font-medium text-blue-600 bg-amber-200/30 dark:bg-amber-950/10">
+                          {item.month2_po.toFixed(0)}
                         </TableCell>
                       )}
 
                       {!hiddenColumns.includes("month2_mes") && (
-                        <TableCell className="text-right font-medium text-slate-700 dark:text-slate-300">
-                          {mes2 !== null && !isNaN(mes2)
-                            ? Math.max(0, mes2).toFixed(0)
+                        <TableCell className="text-right font-medium text-slate-700 dark:text-slate-300 bg-amber-200/30 dark:bg-amber-950/10">
+                          {item.month2_mes !== null && !isNaN(item.month2_mes)
+                            ? item.month2_mes.toFixed(0)
                             : "—"}
                         </TableCell>
                       )}
 
                       {!hiddenColumns.includes("month3_prediction") && (
-                        <TableCell className="text-right font-medium text-blue-600">
+                        <TableCell className="text-right font-medium text-blue-600 bg-fuchsia-200/30 dark:bg-fuchsia-950/10">
                           {item.month3_prediction !== null && item.month3_prediction !== undefined
                             ? item.month3_prediction.toFixed(0)
                             : "—"}
@@ -657,20 +867,20 @@ export function DashboardTable({
                       )}
 
                       {!hiddenColumns.includes("month3_po") && (
-                        <TableCell className="text-right font-medium text-blue-600">
-                          {month3Po < 0 ? 0 : (month3Po).toFixed(0)}
+                        <TableCell className="text-right font-medium text-blue-600 bg-fuchsia-200/30 dark:bg-fuchsia-950/10">
+                          {item.month3_po.toFixed(0)}
                         </TableCell>
                       )}
 
                       {!hiddenColumns.includes("month3_mes") && (
-                        <TableCell className="text-right font-medium text-slate-700 dark:text-slate-300">
-                          {mes3 !== null && !isNaN(mes3)
-                            ? Math.max(0, mes3).toFixed(0)
+                        <TableCell className="text-right font-medium text-slate-700 dark:text-slate-300 bg-fuchsia-200/30 dark:bg-fuchsia-950/10">
+                          {item.month3_mes !== null && !isNaN(item.month3_mes)
+                            ? item.month3_mes.toFixed(0)
                             : "—"}
                         </TableCell>
                       )}
                     </TableRow>
-                  )
+                  );
                 })
               )}
             </TableBody>

@@ -34,7 +34,7 @@ import {
   ArrowDown,
   ArrowUpDown,
   Filter,
-  X
+  X,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -78,13 +78,18 @@ export function DashboardTable({
 }: DashboardTableProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [tableDensity, setTableDensity] = useState<"default" | "compact">("default");
+  const [tableDensity, setTableDensity] = useState<"default" | "compact">(
+    "default",
+  );
   const [viewMode, setViewMode] = useState<"qty" | "days">("qty");
   const [pageSize, setPageSize] = useState("10");
   const [currentPage, setCurrentPage] = useState(1);
   const [isExporting, setIsExporting] = useState(false);
   const [filters, setFilters] = useState<Record<string, string>>({});
-  const [sortConfig, setSortConfig] = useState<{ key: string; direction: "asc" | "desc" | null }>({
+  const [sortConfig, setSortConfig] = useState<{
+    key: string;
+    direction: "asc" | "desc" | null;
+  }>({
     key: "",
     direction: null,
   });
@@ -176,22 +181,39 @@ export function DashboardTable({
 
   const predictionMonthNames = useMemo(() => {
     const itemWithPrediction = allItems.find(
-      (item) => item.month1_date && item.month2_date && item.month3_date
+      (item) => item.month1_date && item.month2_date && item.month3_date,
     );
 
     if (itemWithPrediction && itemWithPrediction.month1_date) {
       const formatDateStr = (dateStr: string) => {
         try {
           const dateObj = new Date(dateStr);
-          const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+          const months = [
+            "Jan",
+            "Feb",
+            "Mar",
+            "Apr",
+            "May",
+            "Jun",
+            "Jul",
+            "Aug",
+            "Sep",
+            "Oct",
+            "Nov",
+            "Dec",
+          ];
           return `${months[dateObj.getMonth()]}-${dateObj.getFullYear().toString().slice(-2)} Forecast`;
         } catch {
           return null;
         }
       };
       const m1 = formatDateStr(itemWithPrediction.month1_date);
-      const m2 = itemWithPrediction.month2_date ? formatDateStr(itemWithPrediction.month2_date) : null;
-      const m3 = itemWithPrediction.month3_date ? formatDateStr(itemWithPrediction.month3_date) : null;
+      const m2 = itemWithPrediction.month2_date
+        ? formatDateStr(itemWithPrediction.month2_date)
+        : null;
+      const m3 = itemWithPrediction.month3_date
+        ? formatDateStr(itemWithPrediction.month3_date)
+        : null;
 
       if (m1 && m2 && m3) {
         return [m1, m2, m3];
@@ -224,34 +246,37 @@ export function DashboardTable({
     "vendor",
   ]);
 
-  const toggleableColumns = useMemo(() => [
-    { id: "material_code", label: "Material Code" },
-    { id: "material_description", label: "Description" },
-    { id: "vendor", label: "Vendor" },
-    { id: "current_stock", label: "GPC Stk." },
-    { id: "coverage_days", label: "Coverage Days" },
-    { id: "product_category", label: "Category" },
-    { id: "lead_time", label: "Lead Time" },
-    { id: "lead_time_qty", label: "LT Qty." },
-    { id: "twelve_m_avg", label: "12M Avg" },
-    { id: "price", label: "Price" },
-    { id: "status", label: "Status" },
-    { id: "month1_prediction", label: predictionMonthNames[0] },
-    { id: "month1_po", label: poMonthNames[0] },
-    { id: "month1_mes", label: mesMonthNames[0] },
-    { id: "month2_prediction", label: predictionMonthNames[1] },
-    { id: "month2_po", label: poMonthNames[1] },
-    { id: "month2_mes", label: mesMonthNames[1] },
-    { id: "month3_prediction", label: predictionMonthNames[2] },
-    { id: "month3_po", label: poMonthNames[2] },
-    { id: "month3_mes", label: mesMonthNames[2] },
-  ], [predictionMonthNames, poMonthNames, mesMonthNames]);
+  const toggleableColumns = useMemo(
+    () => [
+      { id: "material_code", label: "Material Code" },
+      { id: "material_description", label: "Description" },
+      { id: "vendor", label: "Vendor" },
+      { id: "current_stock", label: "GPC Stk." },
+      { id: "coverage_days", label: "Coverage Days" },
+      { id: "product_category", label: "Category" },
+      { id: "lead_time", label: "Lead Time" },
+      { id: "lead_time_qty", label: "LT Qty." },
+      { id: "twelve_m_avg", label: "12M Avg" },
+      { id: "price", label: "Price" },
+      { id: "status", label: "Status" },
+      { id: "month1_prediction", label: predictionMonthNames[0] },
+      { id: "month1_po", label: poMonthNames[0] },
+      { id: "month1_mes", label: mesMonthNames[0] },
+      { id: "month2_prediction", label: predictionMonthNames[1] },
+      { id: "month2_po", label: poMonthNames[1] },
+      { id: "month2_mes", label: mesMonthNames[1] },
+      { id: "month3_prediction", label: predictionMonthNames[2] },
+      { id: "month3_po", label: poMonthNames[2] },
+      { id: "month3_mes", label: mesMonthNames[2] },
+    ],
+    [predictionMonthNames, poMonthNames, mesMonthNames],
+  );
 
   const toggleColumnVisibility = (columnId: string) => {
     setHiddenColumns((prev) =>
       prev.includes(columnId)
         ? prev.filter((col) => col !== columnId)
-        : [...prev, columnId]
+        : [...prev, columnId],
     );
   };
 
@@ -296,7 +321,9 @@ export function DashboardTable({
   const renderSortIcon = (key: string) => {
     const isSorted = sortConfig.key === key;
     if (!isSorted) {
-      return <ArrowUpDown className="w-3.5 h-3.5 opacity-40 hover:opacity-100 transition-opacity flex-shrink-0" />;
+      return (
+        <ArrowUpDown className="w-3.5 h-3.5 opacity-40 hover:opacity-100 transition-opacity flex-shrink-0" />
+      );
     }
     return sortConfig.direction === "asc" ? (
       <ArrowUp className="w-3.5 h-3.5 text-blue-500 dark:text-blue-400 flex-shrink-0" />
@@ -310,7 +337,9 @@ export function DashboardTable({
       return (
         <Select
           value={filters.status || "all"}
-          onValueChange={(val) => handleFilterChange("status", val === "all" ? "" : val)}
+          onValueChange={(val) =>
+            handleFilterChange("status", val === "all" ? "" : val)
+          }
         >
           <SelectTrigger className="h-7 text-[11px] px-2 bg-background border border-muted-foreground/20 font-normal w-full shadow-none focus:ring-1 focus:ring-blue-500 rounded">
             <SelectValue placeholder="All" />
@@ -320,6 +349,29 @@ export function DashboardTable({
             {statuses.map((status) => (
               <SelectItem key={status} value={status}>
                 {status}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      );
+    }
+
+    if (key === "product_category") {
+      return (
+        <Select
+          value={filters.product_category || "all"}
+          onValueChange={(val) =>
+            handleFilterChange("product_category", val === "all" ? "" : val)
+          }
+        >
+          <SelectTrigger className="h-7 text-[11px] px-2 bg-background border border-muted-foreground/20 font-normal w-full shadow-none focus:ring-1 focus:ring-blue-500 rounded">
+            <SelectValue placeholder="All" />
+          </SelectTrigger>
+          <SelectContent className="bg-background border border-border">
+            <SelectItem value="all">All</SelectItem>
+            {categories.map((cat) => (
+              <SelectItem key={cat} value={cat}>
+                {cat}
               </SelectItem>
             ))}
           </SelectContent>
@@ -352,7 +404,7 @@ export function DashboardTable({
     key: keyof typeof columnWidths,
     label: string,
     align: "left" | "right" | "center" = "left",
-    extraClass: string = ""
+    extraClass: string = "",
   ) => {
     if (hiddenColumns.includes(key)) return null;
 
@@ -363,27 +415,60 @@ export function DashboardTable({
       const monthStr = getMonthPart(label);
       tooltipTitle = `${monthStr} Forecast (${viewMode === "days" ? "Days" : "Quantity"})`;
       displayLabel = (
-        <span className={cn("inline-flex items-center gap-1.5", align === "right" && "justify-end", align === "center" && "justify-center")}>
-          <span>{monthStr} <span className="text-[10px] opacity-70 font-normal">({viewMode === "days" ? "Days" : "Qty"})</span></span>
+        <span
+          className={cn(
+            "inline-flex items-center gap-1.5",
+            align === "right" && "justify-end",
+            align === "center" && "justify-center",
+          )}
+        >
           <TrendingUpDown className="w-3.5 h-3.5 text-blue-500 dark:text-blue-400 flex-shrink-0" />
+          <span>
+            {monthStr}{" "}
+            {/* <span className="text-[10px] opacity-70 font-normal">
+              ({viewMode === "days" ? "Days" : "Qty"})
+            </span> */}
+          </span>
         </span>
       );
     } else if (key.endsWith("_po")) {
       const monthStr = getMonthPart(label);
       tooltipTitle = `${monthStr} Purchase Order (${viewMode === "days" ? "Days" : "Quantity"})`;
       displayLabel = (
-        <span className={cn("inline-flex items-center gap-1.5", align === "right" && "justify-end", align === "center" && "justify-center")}>
-          <span>{monthStr} <span className="text-[10px] opacity-70 font-normal">({viewMode === "days" ? "Days" : "Qty"})</span></span>
+        <span
+          className={cn(
+            "inline-flex items-center gap-1.5",
+            align === "right" && "justify-end",
+            align === "center" && "justify-center",
+          )}
+        >
           <ShoppingCart className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400 flex-shrink-0" />
+          <span>
+            {monthStr}{" "}
+            {/* <span className="text-[10px] opacity-70 font-normal">
+              ({viewMode === "days" ? "Days" : "Qty"})
+            </span> */}
+          </span>
         </span>
       );
     } else if (key.endsWith("_mes")) {
       const monthStr = getMonthPart(label);
       tooltipTitle = `${monthStr} MES (${viewMode === "days" ? "Days" : "Quantity"})`;
       displayLabel = (
-        <span className={cn("inline-flex items-center gap-1.5", align === "right" && "justify-end", align === "center" && "justify-center")}>
-          <span>{monthStr} <span className="text-[10px] opacity-70 font-normal">({viewMode === "days" ? "Days" : "Qty"})</span></span>
+        <span
+          className={cn(
+            "inline-flex items-center gap-1.5",
+            align === "right" && "justify-end",
+            align === "center" && "justify-center",
+          )}
+        >
           <Box className="w-3.5 h-3.5 text-purple-500 dark:text-purple-400 flex-shrink-0" />
+          <span>
+            {monthStr}{" "}
+            {/* <span className="text-[10px] opacity-70 font-normal">
+              ({viewMode === "days" ? "Days" : "Qty"})
+            </span> */}
+          </span>
         </span>
       );
     }
@@ -395,7 +480,7 @@ export function DashboardTable({
           "font-medium text-muted-foreground relative group select-none overflow-hidden whitespace-normal break-words h-auto align-middle pb-2.5 pt-2 px-2",
           align === "right" && "text-right",
           align === "center" && "text-center",
-          extraClass
+          extraClass,
         )}
         title={tooltipTitle}
       >
@@ -404,14 +489,12 @@ export function DashboardTable({
             className={cn(
               "flex items-center gap-1 cursor-pointer hover:text-foreground transition-colors leading-tight",
               align === "right" && "justify-end",
-              align === "center" && "justify-center"
+              align === "center" && "justify-center",
             )}
             onClick={() => handleSort(key)}
           >
             <div className="truncate">{displayLabel}</div>
-            <div className="flex-shrink-0">
-              {renderSortIcon(key)}
-            </div>
+            <div className="flex-shrink-0">{renderSortIcon(key)}</div>
           </div>
 
           <div className="mt-1 w-full" onClick={(e) => e.stopPropagation()}>
@@ -473,13 +556,19 @@ export function DashboardTable({
     });
   }, [allItems]);
 
-  const matchStringFilter = (val: string | undefined | null, filterStr: string): boolean => {
+  const matchStringFilter = (
+    val: string | undefined | null,
+    filterStr: string,
+  ): boolean => {
     if (!filterStr) return true;
     if (!val) return false;
     return val.toLowerCase().includes(filterStr.toLowerCase().trim());
   };
 
-  const matchNumericFilter = (val: number | undefined | null, filterStr: string): boolean => {
+  const matchNumericFilter = (
+    val: number | undefined | null,
+    filterStr: string,
+  ): boolean => {
     if (!filterStr) return true;
     if (val === undefined || val === null) return false;
 
@@ -514,10 +603,11 @@ export function DashboardTable({
 
     if (debouncedSearch) {
       const lower = debouncedSearch.toLowerCase();
-      result = result.filter((item) =>
-        item.material_code?.toLowerCase().includes(lower) ||
-        item.material_description?.toLowerCase().includes(lower) ||
-        item.vendor?.toLowerCase().includes(lower)
+      result = result.filter(
+        (item) =>
+          item.material_code?.toLowerCase().includes(lower) ||
+          item.material_description?.toLowerCase().includes(lower) ||
+          item.vendor?.toLowerCase().includes(lower),
       );
     }
 
@@ -534,11 +624,14 @@ export function DashboardTable({
         key === "vendor"
       ) {
         result = result.filter((item) =>
-          matchStringFilter(item[key as keyof Item] as string, filterVal)
+          matchStringFilter(item[key as keyof Item] as string, filterVal),
         );
       } else {
         result = result.filter((item) =>
-          matchNumericFilter(item[key as keyof typeof item] as number, filterVal)
+          matchNumericFilter(
+            item[key as keyof typeof item] as number,
+            filterVal,
+          ),
         );
       }
     });
@@ -588,40 +681,64 @@ export function DashboardTable({
       const data = (filteredItems as EnrichedItem[]).map((item) => {
         const rowData: Record<string, string | number | null | undefined> = {
           "Material Code": item.material_code,
-          "Category": item.product_category,
-          "Description": item.material_description,
-          "Vendor": item.vendor,
+          Category: item.product_category,
+          Description: item.material_description,
+          Vendor: item.vendor,
           "Machine Population": item.machine_population,
           "GPC Stk.": item.current_stock,
           "Coverage (Days)": item.coverage_days,
           "Lead Time": item.lead_time,
           "LT Qty.": item.lead_time_qty,
-          "Delta": item.delta,
+          Delta: item.delta,
           "Total Lead Time": item.total_lead_time,
           "3M Avg": item.three_m_avg,
           "12M Avg": item.twelve_m_avg,
           "Unit Price": item.price,
-          "Status": item.status,
+          Status: item.status,
         };
         // Month 1
-        rowData[predictionMonthNames[0]] = item.month1_prediction !== null && item.month1_prediction !== undefined ? item.month1_prediction : "";
-        rowData[`${predictionMonthNames[0]} (Days)`] = item.month1_prediction_days !== null && item.month1_prediction_days !== undefined ? item.month1_prediction_days : "";
+        rowData[predictionMonthNames[0]] =
+          item.month1_prediction !== null &&
+          item.month1_prediction !== undefined
+            ? item.month1_prediction
+            : "";
+        rowData[`${predictionMonthNames[0]} (Days)`] =
+          item.month1_prediction_days !== null &&
+          item.month1_prediction_days !== undefined
+            ? item.month1_prediction_days
+            : "";
         rowData[poMonthNames[0]] = item.month1_po;
         rowData[`${poMonthNames[0]} (Days)`] = item.month1_po_days;
         rowData[mesMonthNames[0]] = item.month1_mes;
         rowData[`${mesMonthNames[0]} (Days)`] = item.month1_mes_days;
 
         // Month 2
-        rowData[predictionMonthNames[1]] = item.month2_prediction !== null && item.month2_prediction !== undefined ? item.month2_prediction : "";
-        rowData[`${predictionMonthNames[1]} (Days)`] = item.month2_prediction_days !== null && item.month2_prediction_days !== undefined ? item.month2_prediction_days : "";
+        rowData[predictionMonthNames[1]] =
+          item.month2_prediction !== null &&
+          item.month2_prediction !== undefined
+            ? item.month2_prediction
+            : "";
+        rowData[`${predictionMonthNames[1]} (Days)`] =
+          item.month2_prediction_days !== null &&
+          item.month2_prediction_days !== undefined
+            ? item.month2_prediction_days
+            : "";
         rowData[poMonthNames[1]] = item.month2_po;
         rowData[`${poMonthNames[1]} (Days)`] = item.month2_po_days;
         rowData[mesMonthNames[1]] = item.month2_mes;
         rowData[`${mesMonthNames[1]} (Days)`] = item.month2_mes_days;
 
         // Month 3
-        rowData[predictionMonthNames[2]] = item.month3_prediction !== null && item.month3_prediction !== undefined ? item.month3_prediction : "";
-        rowData[`${predictionMonthNames[2]} (Days)`] = item.month3_prediction_days !== null && item.month3_prediction_days !== undefined ? item.month3_prediction_days : "";
+        rowData[predictionMonthNames[2]] =
+          item.month3_prediction !== null &&
+          item.month3_prediction !== undefined
+            ? item.month3_prediction
+            : "";
+        rowData[`${predictionMonthNames[2]} (Days)`] =
+          item.month3_prediction_days !== null &&
+          item.month3_prediction_days !== undefined
+            ? item.month3_prediction_days
+            : "";
         rowData[poMonthNames[2]] = item.month3_po;
         rowData[`${poMonthNames[2]} (Days)`] = item.month3_po_days;
         rowData[mesMonthNames[2]] = item.month3_mes;
@@ -721,7 +838,10 @@ export function DashboardTable({
                 Columns
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56 bg-background border border-border">
+            <DropdownMenuContent
+              align="end"
+              className="w-56 bg-background border border-border"
+            >
               <DropdownMenuLabel>Toggle Columns</DropdownMenuLabel>
               <DropdownMenuSeparator />
               {toggleableColumns.map((col) => (
@@ -745,7 +865,7 @@ export function DashboardTable({
                 "h-full px-3 font-semibold cursor-pointer text-[11px] transition-all duration-150 focus:outline-none",
                 viewMode === "qty"
                   ? "bg-primary text-primary-foreground"
-                  : "hover:bg-muted/70 text-muted-foreground"
+                  : "hover:bg-muted/70 text-muted-foreground",
               )}
               onClick={() => setViewMode("qty")}
             >
@@ -757,7 +877,7 @@ export function DashboardTable({
                 "h-full px-3 font-semibold cursor-pointer text-[11px] transition-all duration-150 border-l border-input focus:outline-none",
                 viewMode === "days"
                   ? "bg-primary text-primary-foreground"
-                  : "hover:bg-muted/70 text-muted-foreground"
+                  : "hover:bg-muted/70 text-muted-foreground",
               )}
               onClick={() => setViewMode("days")}
             >
@@ -765,7 +885,9 @@ export function DashboardTable({
             </button>
           </div>
 
-          <span className="text-muted-foreground hidden sm:inline">Density:</span>
+          <span className="text-muted-foreground hidden sm:inline">
+            Density:
+          </span>
           <Button
             variant={tableDensity === "default" ? "default" : "outline"}
             size="sm"
@@ -788,14 +910,20 @@ export function DashboardTable({
         <div className="overflow-x-auto relative">
           {loading && items.length > 0 && (
             <div className="absolute inset-0 bg-background/50 backdrop-blur-sm z-20 flex items-center justify-center">
-              <div className="animate-pulse font-medium text-blue-600">Loading...</div>
+              <div className="animate-pulse font-medium text-blue-600">
+                Loading...
+              </div>
             </div>
           )}
           <Table
             style={{
               tableLayout: "fixed",
               width: Object.entries(columnWidths)
-                .filter(([key]) => !hiddenColumns.includes(key) && toggleableColumns.some(col => col.id === key))
+                .filter(
+                  ([key]) =>
+                    !hiddenColumns.includes(key) &&
+                    toggleableColumns.some((col) => col.id === key),
+                )
                 .reduce((sum, entry) => sum + entry[1], 0),
               minWidth: "100%",
             }}
@@ -818,26 +946,76 @@ export function DashboardTable({
                 {renderHeader("price", "Price", "right")}
                 {renderHeader("status", "Status", "center")}
 
-                {renderHeader("month1_prediction", predictionMonthNames[0], "right", "bg-blue-200/40 dark:bg-blue-950/20")}
-                {renderHeader("month1_po", poMonthNames[0], "right", "bg-blue-200/40 dark:bg-blue-950/20")}
-                {renderHeader("month1_mes", mesMonthNames[0], "right", "bg-blue-200/40 dark:bg-blue-950/20")}
-                {renderHeader("month2_prediction", predictionMonthNames[1], "right", "bg-amber-200/40 dark:bg-amber-950/20")}
-                {renderHeader("month2_po", poMonthNames[1], "right", "bg-amber-200/40 dark:bg-amber-950/20")}
-                {renderHeader("month2_mes", mesMonthNames[1], "right", "bg-amber-200/40 dark:bg-amber-950/20")}
-                {renderHeader("month3_prediction", predictionMonthNames[2], "right", "bg-fuchsia-200/40 dark:bg-fuchsia-950/20")}
-                {renderHeader("month3_po", poMonthNames[2], "right", "bg-fuchsia-200/40 dark:bg-fuchsia-950/20")}
-                {renderHeader("month3_mes", mesMonthNames[2], "right", "bg-fuchsia-200/40 dark:bg-fuchsia-950/20")}
+                {renderHeader(
+                  "month1_prediction",
+                  predictionMonthNames[0],
+                  "right",
+                  "bg-blue-200/40 dark:bg-blue-950/20",
+                )}
+                {renderHeader(
+                  "month1_po",
+                  poMonthNames[0],
+                  "right",
+                  "bg-blue-200/40 dark:bg-blue-950/20",
+                )}
+                {renderHeader(
+                  "month1_mes",
+                  mesMonthNames[0],
+                  "right",
+                  "bg-blue-200/40 dark:bg-blue-950/20",
+                )}
+                {renderHeader(
+                  "month2_prediction",
+                  predictionMonthNames[1],
+                  "right",
+                  "bg-amber-200/40 dark:bg-amber-950/20",
+                )}
+                {renderHeader(
+                  "month2_po",
+                  poMonthNames[1],
+                  "right",
+                  "bg-amber-200/40 dark:bg-amber-950/20",
+                )}
+                {renderHeader(
+                  "month2_mes",
+                  mesMonthNames[1],
+                  "right",
+                  "bg-amber-200/40 dark:bg-amber-950/20",
+                )}
+                {renderHeader(
+                  "month3_prediction",
+                  predictionMonthNames[2],
+                  "right",
+                  "bg-fuchsia-200/40 dark:bg-fuchsia-950/20",
+                )}
+                {renderHeader(
+                  "month3_po",
+                  poMonthNames[2],
+                  "right",
+                  "bg-fuchsia-200/40 dark:bg-fuchsia-950/20",
+                )}
+                {renderHeader(
+                  "month3_mes",
+                  mesMonthNames[2],
+                  "right",
+                  "bg-fuchsia-200/40 dark:bg-fuchsia-950/20",
+                )}
               </TableRow>
             </TableHeader>
 
             <TableBody>
               {items.length === 0 && !loading ? (
                 <TableRow>
-                  <TableCell colSpan={16 - hiddenColumns.length} className="h-72 text-center">
+                  <TableCell
+                    colSpan={16 - hiddenColumns.length}
+                    className="h-72 text-center"
+                  >
                     <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
                       <Search className="w-10 h-10 mb-4 opacity-40" />
                       <p className="font-medium">No matching materials found</p>
-                      <p className="text-sm mt-1">Try adjusting your search or filters</p>
+                      <p className="text-sm mt-1">
+                        Try adjusting your search or filters
+                      </p>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -848,15 +1026,20 @@ export function DashboardTable({
                       key={item.material_code}
                       className={cn(
                         "hover:bg-muted/50 transition-colors group cursor-pointer",
-                        tableDensity === "compact" && "h-12"
+                        tableDensity === "compact" && "h-12",
                       )}
                       onClick={() => onSelectMaterial(item)}
                     >
                       {!hiddenColumns.includes("material_code") && (
-                        <TableCell className="font-medium truncate">{item.material_code}</TableCell>
+                        <TableCell className="font-medium truncate">
+                          {item.material_code}
+                        </TableCell>
                       )}
                       {!hiddenColumns.includes("product_category") && (
-                        <TableCell className="truncate" title={item.product_category}>
+                        <TableCell
+                          className="truncate"
+                          title={item.product_category}
+                        >
                           {item.product_category}
                         </TableCell>
                       )}
@@ -880,7 +1063,9 @@ export function DashboardTable({
                       )}
                       {!hiddenColumns.includes("coverage_days") && (
                         <TableCell className="text-center font-medium truncate">
-                          {item.coverage_days >= 999999 ? "—" : item.coverage_days.toFixed(0)}
+                          {item.coverage_days >= 999999
+                            ? "—"
+                            : item.coverage_days.toFixed(0)}
                         </TableCell>
                       )}
                       {!hiddenColumns.includes("lead_time") && (
@@ -912,11 +1097,11 @@ export function DashboardTable({
                             className={cn(
                               "font-medium",
                               item.status === "Running" &&
-                              "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400",
+                                "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400",
                               item.status === "Obsolete" &&
-                              "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400",
+                                "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400",
                               item.status === "New" &&
-                              "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400"
+                                "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
                             )}
                           >
                             {item.status}
@@ -926,9 +1111,14 @@ export function DashboardTable({
 
                       {!hiddenColumns.includes("month1_prediction") && (
                         <TableCell className="text-center font-medium text-blue-600 bg-blue-200/30 dark:bg-blue-950/10">
-                          {item.month1_prediction !== null && item.month1_prediction !== undefined ? (
+                          {item.month1_prediction !== null &&
+                          item.month1_prediction !== undefined ? (
                             viewMode === "days" ? (
-                              <span>{item.month1_prediction_days ? `${item.month1_prediction_days.toFixed(0)}d` : "0d"}</span>
+                              <span>
+                                {item.month1_prediction_days
+                                  ? `${item.month1_prediction_days.toFixed(0)}d`
+                                  : "0d"}
+                              </span>
                             ) : (
                               <span>{item.month1_prediction.toFixed(0)}</span>
                             )
@@ -941,7 +1131,11 @@ export function DashboardTable({
                       {!hiddenColumns.includes("month1_po") && (
                         <TableCell className="text-center font-medium text-blue-600 bg-blue-200/30 dark:bg-blue-950/10">
                           {viewMode === "days" ? (
-                            <span>{item.month1_po_days ? `${item.month1_po_days.toFixed(0)}d` : "0d"}</span>
+                            <span>
+                              {item.month1_po_days
+                                ? `${item.month1_po_days.toFixed(0)}d`
+                                : "0d"}
+                            </span>
                           ) : (
                             <span>{item.month1_po.toFixed(0)}</span>
                           )}
@@ -950,9 +1144,14 @@ export function DashboardTable({
 
                       {!hiddenColumns.includes("month1_mes") && (
                         <TableCell className="text-center font-medium text-slate-700 dark:text-slate-300 bg-blue-200/30 dark:bg-blue-950/10">
-                          {item.month1_mes !== null && !isNaN(item.month1_mes) ? (
+                          {item.month1_mes !== null &&
+                          !isNaN(item.month1_mes) ? (
                             viewMode === "days" ? (
-                              <span>{item.month1_mes_days ? `${item.month1_mes_days.toFixed(0)}d` : "0d"}</span>
+                              <span>
+                                {item.month1_mes_days
+                                  ? `${item.month1_mes_days.toFixed(0)}d`
+                                  : "0d"}
+                              </span>
                             ) : (
                               <span>{item.month1_mes.toFixed(0)}</span>
                             )
@@ -964,9 +1163,14 @@ export function DashboardTable({
 
                       {!hiddenColumns.includes("month2_prediction") && (
                         <TableCell className="text-center font-medium text-blue-600 bg-amber-200/30 dark:bg-amber-950/10">
-                          {item.month2_prediction !== null && item.month2_prediction !== undefined ? (
+                          {item.month2_prediction !== null &&
+                          item.month2_prediction !== undefined ? (
                             viewMode === "days" ? (
-                              <span>{item.month2_prediction_days ? `${item.month2_prediction_days.toFixed(0)}d` : "0d"}</span>
+                              <span>
+                                {item.month2_prediction_days
+                                  ? `${item.month2_prediction_days.toFixed(0)}d`
+                                  : "0d"}
+                              </span>
                             ) : (
                               <span>{item.month2_prediction.toFixed(0)}</span>
                             )
@@ -979,7 +1183,11 @@ export function DashboardTable({
                       {!hiddenColumns.includes("month2_po") && (
                         <TableCell className="text-center font-medium text-blue-600 bg-amber-200/30 dark:bg-amber-950/10">
                           {viewMode === "days" ? (
-                            <span>{item.month2_po_days ? `${item.month2_po_days.toFixed(0)}d` : "0d"}</span>
+                            <span>
+                              {item.month2_po_days
+                                ? `${item.month2_po_days.toFixed(0)}d`
+                                : "0d"}
+                            </span>
                           ) : (
                             <span>{item.month2_po.toFixed(0)}</span>
                           )}
@@ -988,9 +1196,14 @@ export function DashboardTable({
 
                       {!hiddenColumns.includes("month2_mes") && (
                         <TableCell className="text-center font-medium text-slate-700 dark:text-slate-300 bg-amber-200/30 dark:bg-amber-950/10">
-                          {item.month2_mes !== null && !isNaN(item.month2_mes) ? (
+                          {item.month2_mes !== null &&
+                          !isNaN(item.month2_mes) ? (
                             viewMode === "days" ? (
-                              <span>{item.month2_mes_days ? `${item.month2_mes_days.toFixed(0)}d` : "0d"}</span>
+                              <span>
+                                {item.month2_mes_days
+                                  ? `${item.month2_mes_days.toFixed(0)}d`
+                                  : "0d"}
+                              </span>
                             ) : (
                               <span>{item.month2_mes.toFixed(0)}</span>
                             )
@@ -1002,9 +1215,14 @@ export function DashboardTable({
 
                       {!hiddenColumns.includes("month3_prediction") && (
                         <TableCell className="text-center font-medium text-blue-600 bg-fuchsia-200/30 dark:bg-fuchsia-950/10">
-                          {item.month3_prediction !== null && item.month3_prediction !== undefined ? (
+                          {item.month3_prediction !== null &&
+                          item.month3_prediction !== undefined ? (
                             viewMode === "days" ? (
-                              <span>{item.month3_prediction_days ? `${item.month3_prediction_days.toFixed(0)}d` : "0d"}</span>
+                              <span>
+                                {item.month3_prediction_days
+                                  ? `${item.month3_prediction_days.toFixed(0)}d`
+                                  : "0d"}
+                              </span>
                             ) : (
                               <span>{item.month3_prediction.toFixed(0)}</span>
                             )
@@ -1017,7 +1235,11 @@ export function DashboardTable({
                       {!hiddenColumns.includes("month3_po") && (
                         <TableCell className="text-center font-medium text-blue-600 bg-fuchsia-200/30 dark:bg-fuchsia-950/10">
                           {viewMode === "days" ? (
-                            <span>{item.month3_po_days ? `${item.month3_po_days.toFixed(0)}d` : "0d"}</span>
+                            <span>
+                              {item.month3_po_days
+                                ? `${item.month3_po_days.toFixed(0)}d`
+                                : "0d"}
+                            </span>
                           ) : (
                             <span>{item.month3_po.toFixed(0)}</span>
                           )}
@@ -1026,9 +1248,14 @@ export function DashboardTable({
 
                       {!hiddenColumns.includes("month3_mes") && (
                         <TableCell className="text-center font-medium text-slate-700 dark:text-slate-300 bg-fuchsia-200/30 dark:bg-fuchsia-950/10">
-                          {item.month3_mes !== null && !isNaN(item.month3_mes) ? (
+                          {item.month3_mes !== null &&
+                          !isNaN(item.month3_mes) ? (
                             viewMode === "days" ? (
-                              <span>{item.month3_mes_days ? `${item.month3_mes_days.toFixed(0)}d` : "0d"}</span>
+                              <span>
+                                {item.month3_mes_days
+                                  ? `${item.month3_mes_days.toFixed(0)}d`
+                                  : "0d"}
+                              </span>
                             ) : (
                               <span>{item.month3_mes.toFixed(0)}</span>
                             )
@@ -1048,9 +1275,11 @@ export function DashboardTable({
         {/* FOOTER BAR */}
         <div className="border-t bg-muted/40 px-6 py-3 flex flex-col md:flex-row gap-3 md:items-center md:justify-between text-sm">
           <div>
-            Showing {totalItems === 0 ? 0 : (currentPage - 1) * Number(pageSize) + 1}
+            Showing{" "}
+            {totalItems === 0 ? 0 : (currentPage - 1) * Number(pageSize) + 1}
             {" - "}
-            {Math.min(currentPage * Number(pageSize), totalItems)} of {totalItems}
+            {Math.min(currentPage * Number(pageSize), totalItems)} of{" "}
+            {totalItems}
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
@@ -1090,7 +1319,9 @@ export function DashboardTable({
                 size="icon"
                 className="h-9 w-9"
                 disabled={currentPage >= totalPages || loading}
-                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                onClick={() =>
+                  setCurrentPage((p) => Math.min(totalPages, p + 1))
+                }
               >
                 <ChevronRight className="w-4 h-4" />
               </Button>

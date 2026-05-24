@@ -35,6 +35,7 @@ import {
   ArrowUpDown,
   Filter,
   X,
+  ChevronDown
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -43,9 +44,15 @@ import {
   DropdownMenuCheckboxItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
+  DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { Item } from "@/app/types";
+import { Item, UserCheckDetail } from "@/app/types";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { useAuth } from "@/components/auth-provider";
+import api from "@/app/lib/api";
+import { Avatar, AvatarFallback, AvatarGroup } from "@/components/ui/avatar";
 
 export interface EnrichedItem extends Item {
   month1_po: number;
@@ -64,6 +71,25 @@ export interface EnrichedItem extends Item {
   month3_po_days: number;
   month3_mes_days: number;
 }
+
+const getAvatarGradient = (email: string) => {
+  const gradients = [
+    "from-blue-600 to-indigo-600",
+    "from-emerald-600 to-teal-600",
+    "from-violet-600 to-purple-600",
+    "from-rose-600 to-pink-600",
+    "from-amber-600 to-orange-600",
+    "from-cyan-600 to-blue-600",
+    "from-fuchsia-600 to-pink-600",
+    "from-violet-600 to-indigo-600",
+  ];
+  let hash = 0;
+  for (let i = 0; i < email.length; i++) {
+    hash = email.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const index = Math.abs(hash) % gradients.length;
+  return gradients[index];
+};
 
 interface DashboardTableProps {
   allItems: Item[];
@@ -93,6 +119,94 @@ export function DashboardTable({
     key: "",
     direction: null,
   });
+
+  const { user } = useAuth();
+  const [localChecks, setLocalChecks] = useState<
+    Record<string, { is_checked: boolean; checks?: UserCheckDetail[] }>
+  >({});
+
+  const [selectedFilterUsers, setSelectedFilterUsers] = useState<string[]>([]);
+
+  const allUsers = useMemo(() => {
+    const userMap = new Map<string, { email: string; name: string }>();
+    allItems.forEach((item) => {
+      item.checks?.forEach((c) => {
+        if (!userMap.has(c.email)) {
+          userMap.set(c.email, {
+            email: c.email,
+            name: `${c.first_name} ${c.last_name}`.trim(),
+          });
+        }
+      });
+    });
+    return Array.from(userMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [allItems]);
+
+  const formatCheckTime = (dateStr?: string) => {
+    if (!dateStr) return "";
+    try {
+      const d = new Date(dateStr);
+      return d.toLocaleString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    } catch {
+      return dateStr;
+    }
+  };
+
+  const handleToggleCheck = async (item: Item) => {
+    const material_code = item.material_code;
+    const currentChecked = user?.role === "admin"
+      ? (item.checks?.some((c) => c.email === user?.email && c.is_checked) ?? false)
+      : (item.is_checked ?? false);
+
+    const newChecked = !currentChecked;
+
+    // Optimistically update local state
+    const nowStr = new Date().toISOString();
+    const userCheckDetail: UserCheckDetail = {
+      email: user?.email || "",
+      first_name: user?.first_name || "",
+      last_name: user?.last_name || "",
+      is_checked: newChecked,
+      checked_at: newChecked ? nowStr : undefined,
+      unchecked_at: !newChecked ? nowStr : undefined,
+    };
+
+    let newChecks = [...(item.checks || [])];
+    const userIndex = newChecks.findIndex((c) => c.email === user?.email);
+    if (userIndex > -1) {
+      newChecks[userIndex] = userCheckDetail;
+    } else {
+      newChecks.push(userCheckDetail);
+    }
+
+    setLocalChecks((prev) => ({
+      ...prev,
+      [material_code]: {
+        is_checked: newChecked,
+        checks: newChecks,
+      },
+    }));
+
+    try {
+      await api.post("/dashboard/check", {
+        material_code,
+        is_checked: newChecked,
+      });
+    } catch (err) {
+      console.error("Failed to update check status", err);
+      // Revert local update on failure
+      setLocalChecks((prev) => {
+        const updated = { ...prev };
+        delete updated[material_code];
+        return updated;
+      });
+    }
+  };
 
   const selectedStatus = filters.status || "all";
   const setSelectedStatus = (statusVal: string) => {
@@ -152,6 +266,7 @@ export function DashboardTable({
   }, [allItems]);
 
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>({
+    is_checked: 110,
     selection: 48,
     material_code: 140,
     material_description: 220,
@@ -248,6 +363,7 @@ export function DashboardTable({
 
   const toggleableColumns = useMemo(
     () => [
+      { id: "is_checked", label: "Checked" },
       { id: "material_code", label: "Material Code" },
       { id: "material_description", label: "Description" },
       { id: "vendor", label: "Vendor" },
@@ -379,7 +495,95 @@ export function DashboardTable({
       );
     }
 
+    if (key === "is_checked") {
+      if (user?.role !== "admin") {
+        return (
+          <Select
+            value={filters.is_checked || "all"}
+            onValueChange={(val) =>
+              handleFilterChange("is_checked", val === "all" ? "" : val)
+            }
+          >
+            <SelectTrigger className="h-7 text-[11px] px-2 bg-background border border-muted-foreground/20 font-normal w-full shadow-none focus:ring-1 focus:ring-blue-500 rounded">
+              <SelectValue placeholder="All" />
+            </SelectTrigger>
+            <SelectContent className="bg-background border border-border">
+              <SelectItem value="all">All</SelectItem>
+              <SelectItem value="checked">Checked</SelectItem>
+              <SelectItem value="unchecked">Unchecked</SelectItem>
+            </SelectContent>
+          </Select>
+        );
+      }
+
+      return (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="outline"
+              className="h-7 text-[10px] px-2 bg-background border border-muted-foreground/20 font-normal w-full shadow-none justify-between rounded hover:bg-background/80 active:bg-background"
+            >
+              <span className="truncate">
+                {selectedFilterUsers.length === 0
+                  ? "All Users"
+                  : selectedFilterUsers.length === 1
+                    ? allUsers.find(u => u.email === selectedFilterUsers[0])?.name || "1 User"
+                    : `${selectedFilterUsers.length} Users`}
+              </span>
+              <ChevronDown className="w-3 h-3 text-muted-foreground ml-1.5 flex-shrink-0" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align="start"
+            className="w-56 bg-background border border-border z-[100]"
+          >
+            <DropdownMenuLabel className="text-xs">Filter Checked Users</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {allUsers.length === 0 ? (
+              <div className="p-2 text-xs text-muted-foreground text-center">No checks found</div>
+            ) : (
+              <>
+                {allUsers.map((u) => (
+                  <DropdownMenuCheckboxItem
+                    key={u.email}
+                    className="text-xs"
+                    checked={selectedFilterUsers.includes(u.email)}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        setSelectedFilterUsers((prev) => [...prev, u.email]);
+                      } else {
+                        setSelectedFilterUsers((prev) => prev.filter((e) => e !== u.email));
+                      }
+                      setCurrentPage(1);
+                    }}
+                    onSelect={(e) => e.preventDefault()}
+                  >
+                    {u.name}
+                  </DropdownMenuCheckboxItem>
+                ))}
+                {selectedFilterUsers.length > 0 && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      className="text-xs text-center justify-center font-medium text-blue-600 hover:text-blue-500 cursor-pointer"
+                      onClick={() => {
+                        setSelectedFilterUsers([]);
+                        setCurrentPage(1);
+                      }}
+                    >
+                      Clear Filter
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      );
+    }
+
     const isNumericKey = ![
+      "is_checked",
       "material_code",
       "material_description",
       "vendor",
@@ -548,9 +752,15 @@ export function DashboardTable({
         computedCoverage = item.current_stock > 0 ? 999999 : 0;
       }
 
+      const localOverride = localChecks[item.material_code];
+      const isChecked = localOverride !== undefined ? localOverride.is_checked : (item.is_checked ?? false);
+      const checks = localOverride !== undefined ? localOverride.checks : (item.checks ?? []);
+
       return {
         ...item,
         coverage_days: computedCoverage,
+        is_checked: isChecked,
+        checks: checks,
         month1_po: item.month1_po || 0,
         month1_mes: item.month1_mes || 0,
         month1_prediction_days: item.month1_prediction_days || 0,
@@ -568,7 +778,7 @@ export function DashboardTable({
         month3_mes_days: item.month3_mes_days || 0,
       };
     });
-  }, [allItems]);
+  }, [allItems, localChecks]);
 
   const matchStringFilter = (
     val: string | undefined | null,
@@ -592,7 +802,7 @@ export function DashboardTable({
       .split(",")
       .map((s) => s.trim())
       .filter(Boolean);
-    
+
     if (conditions.length === 0) return true;
 
     return conditions.every((cond) => {
@@ -682,7 +892,13 @@ export function DashboardTable({
     Object.entries(filters).forEach(([key, filterVal]) => {
       if (!filterVal) return;
 
-      if (key === "status") {
+      if (key === "is_checked") {
+        if (filterVal === "checked") {
+          result = result.filter((item) => item.is_checked === true);
+        } else if (filterVal === "unchecked") {
+          result = result.filter((item) => item.is_checked === false);
+        }
+      } else if (key === "status") {
         result = result.filter((item) => item.status === filterVal);
       } else if (key === "product_category") {
         result = result.filter((item) => item.product_category === filterVal);
@@ -704,8 +920,14 @@ export function DashboardTable({
       }
     });
 
+    if (user?.role === "admin" && selectedFilterUsers.length > 0) {
+      result = result.filter((item) =>
+        item.checks?.some((c) => selectedFilterUsers.includes(c.email) && c.is_checked)
+      );
+    }
+
     return result;
-  }, [enrichedItems, debouncedSearch, filters]);
+  }, [enrichedItems, debouncedSearch, filters, selectedFilterUsers, user]);
 
   const sortedItems = useMemo(() => {
     if (!sortConfig.key || !sortConfig.direction) return filteredItems;
@@ -767,12 +989,12 @@ export function DashboardTable({
         // Month 1
         rowData[predictionMonthNames[0]] =
           item.month1_prediction !== null &&
-          item.month1_prediction !== undefined
+            item.month1_prediction !== undefined
             ? item.month1_prediction
             : "";
         rowData[`${predictionMonthNames[0]} (Days)`] =
           item.month1_prediction_days !== null &&
-          item.month1_prediction_days !== undefined
+            item.month1_prediction_days !== undefined
             ? item.month1_prediction_days
             : "";
         rowData[poMonthNames[0]] = item.month1_po;
@@ -783,12 +1005,12 @@ export function DashboardTable({
         // Month 2
         rowData[predictionMonthNames[1]] =
           item.month2_prediction !== null &&
-          item.month2_prediction !== undefined
+            item.month2_prediction !== undefined
             ? item.month2_prediction
             : "";
         rowData[`${predictionMonthNames[1]} (Days)`] =
           item.month2_prediction_days !== null &&
-          item.month2_prediction_days !== undefined
+            item.month2_prediction_days !== undefined
             ? item.month2_prediction_days
             : "";
         rowData[poMonthNames[1]] = item.month2_po;
@@ -799,12 +1021,12 @@ export function DashboardTable({
         // Month 3
         rowData[predictionMonthNames[2]] =
           item.month3_prediction !== null &&
-          item.month3_prediction !== undefined
+            item.month3_prediction !== undefined
             ? item.month3_prediction
             : "";
         rowData[`${predictionMonthNames[2]} (Days)`] =
           item.month3_prediction_days !== null &&
-          item.month3_prediction_days !== undefined
+            item.month3_prediction_days !== undefined
             ? item.month3_prediction_days
             : "";
         rowData[poMonthNames[2]] = item.month3_po;
@@ -998,6 +1220,7 @@ export function DashboardTable({
           >
             <TableHeader className="bg-muted/50 sticky top-0 z-10">
               <TableRow>
+                {renderHeader("is_checked", "Checked", "center")}
                 {renderHeader("material_code", "Material Code")}
                 {renderHeader("product_category", "Category")}
                 {renderHeader("material_description", "Description")}
@@ -1075,7 +1298,7 @@ export function DashboardTable({
               {items.length === 0 && !loading ? (
                 <TableRow>
                   <TableCell
-                    colSpan={16 - hiddenColumns.length}
+                    colSpan={toggleableColumns.filter((c) => !hiddenColumns.includes(c.id)).length}
                     className="h-72 text-center"
                   >
                     <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
@@ -1089,6 +1312,7 @@ export function DashboardTable({
                 </TableRow>
               ) : (
                 items.map((item) => {
+                  const usersWhoChecked = item.checks?.filter((c) => c.is_checked) || [];
                   return (
                     <TableRow
                       key={item.material_code}
@@ -1098,6 +1322,78 @@ export function DashboardTable({
                       )}
                       onClick={() => onSelectMaterial(item)}
                     >
+                      {!hiddenColumns.includes("is_checked") && (
+                        <TableCell
+                          className="text-center align-middle py-2 px-2"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <div className="flex items-center justify-center gap-2">
+                            <Checkbox
+                              checked={item.is_checked ?? false}
+                              onCheckedChange={() => handleToggleCheck(item)}
+                              aria-label={`Toggle check for ${item.material_code}`}
+                            />
+                            {user?.role === "admin" && usersWhoChecked.length > 0 && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <div className="flex items-center cursor-help ml-1">
+                                    <AvatarGroup>
+                                      {usersWhoChecked.map((check) => {
+                                        const initials = `${check.first_name[0] || ""}${check.last_name[0] || ""}`.toUpperCase();
+                                        return (
+                                          <Avatar key={check.email} size="sm" className="border-border shadow-sm select-none">
+                                            <AvatarFallback className={cn("bg-gradient-to-br text-[8px] text-white font-extrabold", getAvatarGradient(check.email))}>
+                                              {initials}
+                                            </AvatarFallback>
+                                          </Avatar>
+                                        );
+                                      })}
+                                    </AvatarGroup>
+                                  </div>
+                                </TooltipTrigger>
+                                <TooltipContent className="bg-white dark:bg-zinc-900 border border-border p-3 shadow-lg rounded-md max-w-sm text-foreground z-[100]">
+                                  <div className="space-y-2 min-w-[200px]">
+                                    <p className="font-semibold text-xs border-b border-border pb-1">User Check Statuses</p>
+                                    {item.checks && item.checks.length > 0 ? (
+                                      <div className="space-y-2 text-xs">
+                                        {item.checks.map((check) => (
+                                          <div key={check.email} className="flex items-center justify-between gap-3">
+                                            <div className="flex flex-col text-left">
+                                              <span className="font-medium text-foreground">
+                                                {check.first_name} {check.last_name}
+                                              </span>
+                                              <span className="text-[10px] text-muted-foreground">
+                                                {check.email}
+                                              </span>
+                                            </div>
+                                            <div className="flex items-center gap-1.5 text-[10px] text-right">
+                                              {check.is_checked ? (
+                                                <span className="text-emerald-600 dark:text-emerald-400 font-semibold bg-emerald-50 dark:bg-emerald-950/20 px-1 py-0.5 rounded">
+                                                  Checked {formatCheckTime(check.checked_at)}
+                                                </span>
+                                              ) : check.unchecked_at ? (
+                                                <span className="text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 px-1 py-0.5 rounded">
+                                                  Unchecked {formatCheckTime(check.unchecked_at)}
+                                                </span>
+                                              ) : (
+                                                <span className="text-muted-foreground opacity-60 bg-muted px-1 py-0.5 rounded">
+                                                  Not checked
+                                                </span>
+                                              )}
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    ) : (
+                                      <p className="text-xs text-muted-foreground">No users have checked this item.</p>
+                                    )}
+                                  </div>
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
+                          </div>
+                        </TableCell>
+                      )}
                       {!hiddenColumns.includes("material_code") && (
                         <TableCell className="font-medium truncate">
                           {item.material_code}
@@ -1165,11 +1461,11 @@ export function DashboardTable({
                             className={cn(
                               "font-medium",
                               item.status === "Running" &&
-                                "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400",
+                              "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400",
                               item.status === "Obsolete" &&
-                                "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400",
+                              "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400",
                               item.status === "New" &&
-                                "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
+                              "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
                             )}
                           >
                             {item.status}
@@ -1180,7 +1476,7 @@ export function DashboardTable({
                       {!hiddenColumns.includes("month1_prediction") && (
                         <TableCell className="text-center font-medium text-blue-600 bg-blue-200/30 dark:bg-blue-950/10">
                           {item.month1_prediction !== null &&
-                          item.month1_prediction !== undefined ? (
+                            item.month1_prediction !== undefined ? (
                             viewMode === "days" ? (
                               <span>
                                 {item.month1_prediction_days
@@ -1213,7 +1509,7 @@ export function DashboardTable({
                       {!hiddenColumns.includes("month1_mes") && (
                         <TableCell className="text-center font-medium text-slate-700 dark:text-slate-300 bg-blue-200/30 dark:bg-blue-950/10">
                           {item.month1_mes !== null &&
-                          !isNaN(item.month1_mes) ? (
+                            !isNaN(item.month1_mes) ? (
                             viewMode === "days" ? (
                               <span>
                                 {item.month1_mes_days
@@ -1232,7 +1528,7 @@ export function DashboardTable({
                       {!hiddenColumns.includes("month2_prediction") && (
                         <TableCell className="text-center font-medium text-blue-600 bg-amber-200/30 dark:bg-amber-950/10">
                           {item.month2_prediction !== null &&
-                          item.month2_prediction !== undefined ? (
+                            item.month2_prediction !== undefined ? (
                             viewMode === "days" ? (
                               <span>
                                 {item.month2_prediction_days
@@ -1265,7 +1561,7 @@ export function DashboardTable({
                       {!hiddenColumns.includes("month2_mes") && (
                         <TableCell className="text-center font-medium text-slate-700 dark:text-slate-300 bg-amber-200/30 dark:bg-amber-950/10">
                           {item.month2_mes !== null &&
-                          !isNaN(item.month2_mes) ? (
+                            !isNaN(item.month2_mes) ? (
                             viewMode === "days" ? (
                               <span>
                                 {item.month2_mes_days
@@ -1284,7 +1580,7 @@ export function DashboardTable({
                       {!hiddenColumns.includes("month3_prediction") && (
                         <TableCell className="text-center font-medium text-blue-600 bg-fuchsia-200/30 dark:bg-fuchsia-950/10">
                           {item.month3_prediction !== null &&
-                          item.month3_prediction !== undefined ? (
+                            item.month3_prediction !== undefined ? (
                             viewMode === "days" ? (
                               <span>
                                 {item.month3_prediction_days
@@ -1317,7 +1613,7 @@ export function DashboardTable({
                       {!hiddenColumns.includes("month3_mes") && (
                         <TableCell className="text-center font-medium text-slate-700 dark:text-slate-300 bg-fuchsia-200/30 dark:bg-fuchsia-950/10">
                           {item.month3_mes !== null &&
-                          !isNaN(item.month3_mes) ? (
+                            !isNaN(item.month3_mes) ? (
                             viewMode === "days" ? (
                               <span>
                                 {item.month3_mes_days

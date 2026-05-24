@@ -1,3 +1,12 @@
+export type UserCheckDetail = {
+  email: string;
+  first_name: string;
+  last_name: string;
+  is_checked: boolean;
+  checked_at?: string;
+  unchecked_at?: string;
+};
+
 export type Item = {
   material_code: string;
   material_description: string;
@@ -35,6 +44,8 @@ export type Item = {
   month1_date?: string;
   month2_date?: string;
   month3_date?: string;
+  is_checked?: boolean;
+  checks?: UserCheckDetail[];
 };
 
 export type TrendData = {

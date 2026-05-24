@@ -379,6 +379,14 @@ export function DashboardTable({
       );
     }
 
+    const isNumericKey = ![
+      "material_code",
+      "material_description",
+      "vendor",
+      "status",
+      "product_category",
+    ].includes(key);
+
     return (
       <div className="relative w-full">
         <Filter className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground/50 pointer-events-none" />
@@ -386,6 +394,12 @@ export function DashboardTable({
           className="h-7 text-xs pl-6 pr-5 bg-background border border-muted-foreground/20 rounded font-normal w-full shadow-none focus-visible:ring-1 focus-visible:ring-blue-500"
           value={filters[key] || ""}
           onChange={(e) => handleFilterChange(key, e.target.value)}
+          placeholder={isNumericKey ? "e.g. >=10, !=0" : ""}
+          title={
+            isNumericKey
+              ? "Filter options: >=, <=, >, <, !=, =, ranges (e.g., 10..20), or comma-separated conditions (e.g., >=10, <=20)"
+              : ""
+          }
         />
         {(filters[key] || "").length > 0 && (
           <button
@@ -572,30 +586,84 @@ export function DashboardTable({
     if (!filterStr) return true;
     if (val === undefined || val === null) return false;
 
-    const trimmed = filterStr.trim();
+    // Split filter string by comma to support multiple conditions (logical AND)
+    // Example: ">=10, <=20, !=15"
+    const conditions = filterStr
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    
+    if (conditions.length === 0) return true;
 
-    if (trimmed.startsWith(">=")) {
-      const num = parseFloat(trimmed.slice(2).trim());
-      return isNaN(num) ? true : val >= num;
-    }
-    if (trimmed.startsWith("<=")) {
-      const num = parseFloat(trimmed.slice(2).trim());
-      return isNaN(num) ? true : val <= num;
-    }
-    if (trimmed.startsWith(">")) {
-      const num = parseFloat(trimmed.slice(1).trim());
-      return isNaN(num) ? true : val > num;
-    }
-    if (trimmed.startsWith("<")) {
-      const num = parseFloat(trimmed.slice(1).trim());
-      return isNaN(num) ? true : val < num;
-    }
-    if (trimmed.startsWith("=")) {
-      const num = parseFloat(trimmed.slice(1).trim());
-      return isNaN(num) ? true : val === num;
-    }
+    return conditions.every((cond) => {
+      const trimmed = cond;
 
-    return val.toString().includes(trimmed);
+      if (trimmed.startsWith(">=")) {
+        const num = parseFloat(trimmed.slice(2).trim());
+        return isNaN(num) ? true : val >= num;
+      }
+      if (trimmed.startsWith("<=")) {
+        const num = parseFloat(trimmed.slice(2).trim());
+        return isNaN(num) ? true : val <= num;
+      }
+      if (trimmed.startsWith("!==")) {
+        const num = parseFloat(trimmed.slice(3).trim());
+        return isNaN(num) ? true : val !== num;
+      }
+      if (trimmed.startsWith("!=")) {
+        const num = parseFloat(trimmed.slice(2).trim());
+        return isNaN(num) ? true : val !== num;
+      }
+      if (trimmed.startsWith("<>")) {
+        const num = parseFloat(trimmed.slice(2).trim());
+        return isNaN(num) ? true : val !== num;
+      }
+      if (trimmed.startsWith(">")) {
+        const num = parseFloat(trimmed.slice(1).trim());
+        return isNaN(num) ? true : val > num;
+      }
+      if (trimmed.startsWith("<")) {
+        const num = parseFloat(trimmed.slice(1).trim());
+        return isNaN(num) ? true : val < num;
+      }
+      if (trimmed.startsWith("==")) {
+        const num = parseFloat(trimmed.slice(2).trim());
+        return isNaN(num) ? true : val === num;
+      }
+      if (trimmed.startsWith("=")) {
+        const num = parseFloat(trimmed.slice(1).trim());
+        return isNaN(num) ? true : val === num;
+      }
+
+      // Check for range formats like "10..20" or "10-20"
+      if (trimmed.includes("..")) {
+        const parts = trimmed.split("..");
+        if (parts.length === 2) {
+          const min = parseFloat(parts[0].trim());
+          const max = parseFloat(parts[1].trim());
+          const matchMin = isNaN(min) ? true : val >= min;
+          const matchMax = isNaN(max) ? true : val <= max;
+          return matchMin && matchMax;
+        }
+      }
+
+      const rangeParts = trimmed.split("-");
+      if (
+        rangeParts.length === 2 &&
+        rangeParts[0].trim() !== "" &&
+        rangeParts[1].trim() !== ""
+      ) {
+        const min = parseFloat(rangeParts[0].trim());
+        const max = parseFloat(rangeParts[1].trim());
+        if (!isNaN(min) && !isNaN(max)) {
+          return val >= min && val <= max;
+        }
+      }
+
+      // Default fallback
+      const num = parseFloat(trimmed);
+      return isNaN(num) ? val.toString().includes(trimmed) : val === num;
+    });
   };
 
   const filteredItems = useMemo(() => {

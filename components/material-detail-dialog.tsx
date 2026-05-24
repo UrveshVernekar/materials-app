@@ -19,6 +19,7 @@ import { Item, TrendData, PurchaseOrder } from "@/app/types";
 interface MaterialDetailDialogProps {
   selectedMaterial: Item | null;
   onClose: () => void;
+  onPOAddedOrUpdated?: () => void;
 }
 
 const MONTH_NAMES = [
@@ -29,6 +30,7 @@ const MONTH_NAMES = [
 export function MaterialDetailDialog({
   selectedMaterial,
   onClose,
+  onPOAddedOrUpdated,
 }: MaterialDetailDialogProps) {
   const [trendData, setTrendData] = useState<TrendData[]>([]);
   const [loadingTrend, setLoadingTrend] = useState(false);
@@ -252,6 +254,7 @@ export function MaterialDetailDialog({
           month: Number(formData.month),
         });
         setFormSuccess("Purchase Order updated successfully!");
+        onPOAddedOrUpdated?.();
         setTimeout(() => {
           setIsFormOpen(false);
           setEditingPO(null);
@@ -267,6 +270,7 @@ export function MaterialDetailDialog({
           month: Number(formData.month),
         });
         setFormSuccess("Purchase Order added successfully!");
+        onPOAddedOrUpdated?.();
         setTimeout(() => {
           setIsFormOpen(false);
           fetchPurchaseOrders();
@@ -852,7 +856,14 @@ export function MaterialDetailDialog({
                                     const isNew = Number(po.receive_qty) === 0;
                                     return (
                                       <tr key={po.id} className="hover:bg-muted/30 transition-colors">
-                                        <td className="p-2.5 font-semibold text-foreground">{po.po_number}</td>
+                                        <td className="p-2.5 text-foreground">
+                                           <div className="font-semibold">{po.po_number}</div>
+                                           {po.user && (
+                                             <div className="text-[10px] text-muted-foreground font-normal mt-0.5" title={po.user.email}>
+                                               By: {po.user.first_name} {po.user.last_name}
+                                             </div>
+                                           )}
+                                         </td>
                                         <td className="p-2.5 text-muted-foreground truncate max-w-[80px]">
                                           {MONTH_NAMES[po.month - 1].slice(0, 3)} {po.year}
                                         </td>

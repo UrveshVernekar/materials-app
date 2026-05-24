@@ -30,32 +30,30 @@ export default function MaterialsDashboard() {
   const [error, setError] = useState("");
   const [selectedMaterial, setSelectedMaterial] = useState<Item | null>(null);
 
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const [kpisRes, tableRes] = await Promise.all([
+        api.get("/dashboard/kpis"),
+        api.get(`/dashboard/table`),
+      ]);
+      setKpis(kpisRes.data);
+      setAllItems(tableRes.data.items);
+      setError("");
+    } catch (err) {
+      setError("Failed to fetch materials data");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    let isMounted = true;
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        const [kpisRes, tableRes] = await Promise.all([
-          api.get("/dashboard/kpis"),
-          api.get(`/dashboard/table`),
-        ]);
-
-        if (isMounted) {
-          setKpis(kpisRes.data);
-          setAllItems(tableRes.data.items);
-        }
-      } catch (err) {
-        if (isMounted) setError("Failed to fetch materials data");
-      } finally {
-        if (isMounted) setLoading(false);
-      }
-    };
-
     fetchData();
-    return () => {
-      isMounted = false;
-    };
   }, []);
+
+  const activeMaterial = selectedMaterial
+    ? allItems.find((item) => item.material_code === selectedMaterial.material_code) || selectedMaterial
+    : null;
 
   if (loading && allItems.length === 0 && !kpis) {
     return (
@@ -88,7 +86,7 @@ export default function MaterialsDashboard() {
         <div className="text-center">
           <div className="text-red-500 text-2xl mb-2">⚠️</div>
           <p className="text-xl font-medium text-red-600">{error}</p>
-          <Button onClick={() => window.location.reload()} className="mt-4">
+          <Button onClick={() => fetchData()} className="mt-4">
             Retry
           </Button>
         </div>
@@ -119,13 +117,15 @@ export default function MaterialsDashboard() {
           allItems={allItems}
           loading={loading}
           onSelectMaterial={setSelectedMaterial}
+          onRefresh={fetchData}
         />
       </div>
 
       {/* Detail Dialog Popup */}
       <MaterialDetailDialog
-        selectedMaterial={selectedMaterial}
+        selectedMaterial={activeMaterial}
         onClose={() => setSelectedMaterial(null)}
+        onPOAddedOrUpdated={fetchData}
       />
     </div>
   );

@@ -46,6 +46,15 @@ export type Item = {
   month3_date?: string;
   is_checked?: boolean;
   checks?: UserCheckDetail[];
+  actual_month1_po?: number | null;
+  actual_month1_mes?: number | null;
+  actual_month1_mes_days?: number | null;
+  actual_month2_po?: number | null;
+  actual_month2_mes?: number | null;
+  actual_month2_mes_days?: number | null;
+  actual_month3_po?: number | null;
+  actual_month3_mes?: number | null;
+  actual_month3_mes_days?: number | null;
 };
 
 export type TrendData = {
@@ -73,6 +82,12 @@ export type PurchaseOrder = {
   year: number;
   month: number;
   period_date?: string;
+  user_id?: number | null;
+  user?: {
+    first_name: string;
+    last_name: string;
+    email: string;
+  } | null;
   created_at?: string;
   updated_at?: string;
 };

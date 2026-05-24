@@ -35,7 +35,8 @@ import {
   ArrowUpDown,
   Filter,
   X,
-  ChevronDown
+  ChevronDown,
+  RefreshCw
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -95,18 +96,20 @@ interface DashboardTableProps {
   allItems: Item[];
   loading: boolean;
   onSelectMaterial: (item: Item) => void;
+  onRefresh?: () => void;
 }
 
 export function DashboardTable({
   allItems,
   loading,
   onSelectMaterial,
+  onRefresh,
 }: DashboardTableProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [tableDensity, setTableDensity] = useState<"default" | "compact">(
-    "default",
-  );
+  // const [tableDensity, setTableDensity] = useState<"default" | "compact">(
+  //   "default",
+  // );
   const [viewMode, setViewMode] = useState<"qty" | "days">("qty");
   const [pageSize, setPageSize] = useState("10");
   const [currentPage, setCurrentPage] = useState(1);
@@ -206,6 +209,66 @@ export function DashboardTable({
         return updated;
       });
     }
+  };
+
+  const renderPOCellContent = (predictedQty: number, predictedDays: number, actualQty: number | null | undefined, twelveMAvg: number) => {
+    const dailyDemand = twelveMAvg ? twelveMAvg / 30 : 0;
+    const showActual = actualQty !== null && actualQty !== undefined;
+
+    let predText = "";
+    let actText = "";
+
+    if (viewMode === "days") {
+      predText = predictedDays ? `${predictedDays.toFixed(0)}d` : "0d";
+      if (showActual) {
+        const actDays = dailyDemand > 0 ? actualQty! / dailyDemand : 0;
+        actText = `${actDays.toFixed(0)}d`;
+      }
+    } else {
+      predText = predictedQty.toFixed(0);
+      if (showActual) {
+        actText = actualQty!.toFixed(0);
+      }
+    }
+
+    return (
+      <div className="flex flex-col items-center justify-center leading-tight">
+        <span>{predText}</span>
+        {showActual && (
+          <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold mt-0.5">
+            Act: {actText}
+          </span>
+        )}
+      </div>
+    );
+  };
+
+  const renderMESCellContent = (predictedQty: number, predictedDays: number, actualQty: number | null | undefined, actualDays: number | null | undefined, hasAnyActualPO: boolean) => {
+    let predText = "";
+    let actText = "";
+
+    if (viewMode === "days") {
+      predText = predictedDays ? `${predictedDays.toFixed(0)}d` : "0d";
+      if (hasAnyActualPO) {
+        actText = actualDays !== null && actualDays !== undefined ? `${actualDays.toFixed(0)}d` : "0d";
+      }
+    } else {
+      predText = predictedQty ? predictedQty.toFixed(0) : "0";
+      if (hasAnyActualPO) {
+        actText = actualQty !== null && actualQty !== undefined ? actualQty.toFixed(0) : "0";
+      }
+    }
+
+    return (
+      <div className="flex flex-col items-center justify-center leading-tight">
+        <span>{predText}</span>
+        {hasAnyActualPO && (
+          <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-semibold mt-0.5">
+            Act: {actText}
+          </span>
+        )}
+      </div>
+    );
   };
 
   const selectedStatus = filters.status || "all";
@@ -1106,6 +1169,19 @@ export function DashboardTable({
         </div>
 
         <div className="flex items-center gap-3 text-sm">
+          {onRefresh && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2 cursor-pointer"
+              onClick={onRefresh}
+              disabled={loading}
+            >
+              <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
+              Refresh
+            </Button>
+          )}
+
           <Button
             variant="outline"
             size="sm"
@@ -1175,10 +1251,10 @@ export function DashboardTable({
             </button>
           </div>
 
-          <span className="text-muted-foreground hidden sm:inline">
+          {/* <span className="text-muted-foreground hidden sm:inline">
             Density:
-          </span>
-          <Button
+          </span> */}
+          {/* <Button
             variant={tableDensity === "default" ? "default" : "outline"}
             size="sm"
             onClick={() => setTableDensity("default")}
@@ -1191,7 +1267,7 @@ export function DashboardTable({
             onClick={() => setTableDensity("compact")}
           >
             Compact
-          </Button>
+          </Button> */}
         </div>
       </div>
 
@@ -1318,7 +1394,7 @@ export function DashboardTable({
                       key={item.material_code}
                       className={cn(
                         "hover:bg-muted/50 transition-colors group cursor-pointer",
-                        tableDensity === "compact" && "h-12",
+                        // tableDensity === "compact" && "h-12",
                       )}
                       onClick={() => onSelectMaterial(item)}
                     >
@@ -1494,33 +1570,18 @@ export function DashboardTable({
 
                       {!hiddenColumns.includes("month1_po") && (
                         <TableCell className="text-center font-medium text-blue-600 bg-blue-200/30 dark:bg-blue-950/10">
-                          {viewMode === "days" ? (
-                            <span>
-                              {item.month1_po_days
-                                ? `${item.month1_po_days.toFixed(0)}d`
-                                : "0d"}
-                            </span>
-                          ) : (
-                            <span>{item.month1_po.toFixed(0)}</span>
-                          )}
+                          {renderPOCellContent(item.month1_po, item.month1_po_days, item.actual_month1_po, item.twelve_m_avg)}
                         </TableCell>
                       )}
 
                       {!hiddenColumns.includes("month1_mes") && (
                         <TableCell className="text-center font-medium text-slate-700 dark:text-slate-300 bg-blue-200/30 dark:bg-blue-950/10">
-                          {item.month1_mes !== null &&
-                            !isNaN(item.month1_mes) ? (
-                            viewMode === "days" ? (
-                              <span>
-                                {item.month1_mes_days
-                                  ? `${item.month1_mes_days.toFixed(0)}d`
-                                  : "0d"}
-                              </span>
-                            ) : (
-                              <span>{item.month1_mes.toFixed(0)}</span>
-                            )
-                          ) : (
-                            "—"
+                          {renderMESCellContent(
+                            item.month1_mes,
+                            item.month1_mes_days,
+                            item.actual_month1_mes,
+                            item.actual_month1_mes_days,
+                            item.actual_month1_po !== null || item.actual_month2_po !== null || item.actual_month3_po !== null
                           )}
                         </TableCell>
                       )}
@@ -1546,33 +1607,18 @@ export function DashboardTable({
 
                       {!hiddenColumns.includes("month2_po") && (
                         <TableCell className="text-center font-medium text-blue-600 bg-amber-200/30 dark:bg-amber-950/10">
-                          {viewMode === "days" ? (
-                            <span>
-                              {item.month2_po_days
-                                ? `${item.month2_po_days.toFixed(0)}d`
-                                : "0d"}
-                            </span>
-                          ) : (
-                            <span>{item.month2_po.toFixed(0)}</span>
-                          )}
+                          {renderPOCellContent(item.month2_po, item.month2_po_days, item.actual_month2_po, item.twelve_m_avg)}
                         </TableCell>
                       )}
 
                       {!hiddenColumns.includes("month2_mes") && (
                         <TableCell className="text-center font-medium text-slate-700 dark:text-slate-300 bg-amber-200/30 dark:bg-amber-950/10">
-                          {item.month2_mes !== null &&
-                            !isNaN(item.month2_mes) ? (
-                            viewMode === "days" ? (
-                              <span>
-                                {item.month2_mes_days
-                                  ? `${item.month2_mes_days.toFixed(0)}d`
-                                  : "0d"}
-                              </span>
-                            ) : (
-                              <span>{item.month2_mes.toFixed(0)}</span>
-                            )
-                          ) : (
-                            "—"
+                          {renderMESCellContent(
+                            item.month2_mes,
+                            item.month2_mes_days,
+                            item.actual_month2_mes,
+                            item.actual_month2_mes_days,
+                            item.actual_month1_po !== null || item.actual_month2_po !== null || item.actual_month3_po !== null
                           )}
                         </TableCell>
                       )}
@@ -1598,33 +1644,18 @@ export function DashboardTable({
 
                       {!hiddenColumns.includes("month3_po") && (
                         <TableCell className="text-center font-medium text-blue-600 bg-fuchsia-200/30 dark:bg-fuchsia-950/10">
-                          {viewMode === "days" ? (
-                            <span>
-                              {item.month3_po_days
-                                ? `${item.month3_po_days.toFixed(0)}d`
-                                : "0d"}
-                            </span>
-                          ) : (
-                            <span>{item.month3_po.toFixed(0)}</span>
-                          )}
+                          {renderPOCellContent(item.month3_po, item.month3_po_days, item.actual_month3_po, item.twelve_m_avg)}
                         </TableCell>
                       )}
 
                       {!hiddenColumns.includes("month3_mes") && (
                         <TableCell className="text-center font-medium text-slate-700 dark:text-slate-300 bg-fuchsia-200/30 dark:bg-fuchsia-950/10">
-                          {item.month3_mes !== null &&
-                            !isNaN(item.month3_mes) ? (
-                            viewMode === "days" ? (
-                              <span>
-                                {item.month3_mes_days
-                                  ? `${item.month3_mes_days.toFixed(0)}d`
-                                  : "0d"}
-                              </span>
-                            ) : (
-                              <span>{item.month3_mes.toFixed(0)}</span>
-                            )
-                          ) : (
-                            "—"
+                          {renderMESCellContent(
+                            item.month3_mes,
+                            item.month3_mes_days,
+                            item.actual_month3_mes,
+                            item.actual_month3_mes_days,
+                            item.actual_month1_po !== null || item.actual_month2_po !== null || item.actual_month3_po !== null
                           )}
                         </TableCell>
                       )}

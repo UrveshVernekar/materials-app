@@ -16,6 +16,14 @@ export default function AdminPage() {
   const [progress, setProgress] = useState(0);
   const [progressMessage, setProgressMessage] = useState("");
 
+  // Purchase Orders Import States
+  const [poFile, setPoFile] = useState<File | null>(null);
+  const [isPoUploading, setIsPoUploading] = useState(false);
+  const [poUploadStatus, setPoUploadStatus] = useState<"idle" | "success" | "error">("idle");
+  const [poUploadResult, setPoUploadResult] = useState<{ pos_count?: number; message?: string } | null>(null);
+  const [poProgress, setPoProgress] = useState(0);
+  const [poProgressMessage, setPoProgressMessage] = useState("");
+
   // Prediction Engine States
   const [isPredicting, setIsPredicting] = useState(false);
   const [predictStatus, setPredictStatus] = useState<"idle" | "success" | "error">("idle");
@@ -33,8 +41,27 @@ export default function AdminPage() {
     }
   }, []);
 
+  const onPoDrop = useCallback((acceptedFiles: File[]) => {
+    if (acceptedFiles.length > 0) {
+      setPoFile(acceptedFiles[0]);
+      setPoUploadStatus("idle");
+      setPoUploadResult(null);
+      setPoProgress(0);
+      setPoProgressMessage("");
+    }
+  }, []);
+
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
+    accept: {
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"],
+      "application/vnd.ms-excel": [".xls"]
+    },
+    maxFiles: 1,
+  });
+
+  const { getRootProps: getPoRootProps, getInputProps: getPoInputProps, isDragActive: isPoDragActive } = useDropzone({
+    onDrop: onPoDrop,
     accept: {
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"],
       "application/vnd.ms-excel": [".xls"]
@@ -95,6 +122,61 @@ export default function AdminPage() {
       setUploadResult({ message: err.response?.data?.detail || "An unexpected error occurred during import." });
       setUploadStatus("error");
       setIsUploading(false);
+    }
+  };
+
+  const pollPoStatus = async (taskId: string) => {
+    try {
+      const res = await api.get(`/admin/upload-pos/status/${taskId}`);
+      setPoProgress(res.data.progress);
+      setPoProgressMessage(res.data.message);
+
+      if (res.data.status === "completed") {
+        setPoUploadResult({
+          message: res.data.message,
+          pos_count: res.data.pos_count
+        });
+        setPoUploadStatus("success");
+        setIsPoUploading(false);
+      } else if (res.data.status === "failed") {
+        setPoUploadResult({ message: res.data.error || "Import failed" });
+        setPoUploadStatus("error");
+        setIsPoUploading(false);
+      } else {
+        // Continue polling
+        setTimeout(() => pollPoStatus(taskId), 1000);
+      }
+    } catch (err: any) {
+      setPoUploadResult({ message: "Failed to fetch status" });
+      setPoUploadStatus("error");
+      setIsPoUploading(false);
+    }
+  };
+
+  const handlePoUpload = async () => {
+    if (!poFile) return;
+
+    setIsPoUploading(true);
+    setPoUploadStatus("idle");
+    setPoProgress(0);
+    setPoProgressMessage("Starting upload...");
+
+    const formData = new FormData();
+    formData.append("file", poFile);
+
+    try {
+      const res = await api.post(`/admin/upload-pos`, formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+      const taskId = res.data.task_id;
+      pollPoStatus(taskId);
+    } catch (err: any) {
+      console.error(err);
+      setPoUploadResult({ message: err.response?.data?.detail || "An unexpected error occurred during import." });
+      setPoUploadStatus("error");
+      setIsPoUploading(false);
     }
   };
 
@@ -279,6 +361,126 @@ export default function AdminPage() {
                   <h4 className="font-semibold text-red-800 dark:text-red-300">Import Failed</h4>
                   <p className="text-sm text-red-700 dark:text-red-400/80 mt-1">
                     {uploadResult.message}
+                  </p>
+                </div>
+              </div>
+            )}
+
+          </CardContent>
+        </Card>
+
+        {/* PURCHASE ORDERS IMPORT CARD */}
+        <Card className="shadow-sm border-border">
+          <CardHeader>
+            <CardTitle>Purchase Orders Import</CardTitle>
+            <CardDescription>
+              Upload your Purchase Orders Excel file (with sheet named "IND") to populate the database.
+              This will overwrite all existing purchase orders in the system.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+
+            {/* DROPZONE */}
+            <div
+              {...getPoRootProps()}
+              className={cn(
+                "border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center text-center cursor-pointer transition-colors",
+                isPoDragActive ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20" : "border-border hover:border-blue-400 hover:bg-muted/50",
+                poFile && "border-blue-500 bg-blue-50/50 dark:bg-blue-900/10"
+              )}
+            >
+              <input {...getPoInputProps()} />
+
+              {poFile ? (
+                <div className="flex flex-col items-center gap-3">
+                  <div className="w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+                    <FileSpreadsheet className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-foreground">{poFile.name}</p>
+                    <p className="text-xs text-muted-foreground">{(poFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                  </div>
+                  <p className="text-sm text-blue-600 dark:text-blue-400 mt-2 hover:underline">
+                    Click or drag to change file
+                  </p>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center gap-3 text-muted-foreground">
+                  <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+                    <UploadCloud className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-foreground">Click to upload or drag and drop</p>
+                    <p className="text-sm">XLSX or XLS files only</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* ACTIONS */}
+            <div className="flex items-center justify-between pt-2">
+              <Button
+                variant="outline"
+                onClick={() => { setPoFile(null); setPoUploadStatus("idle"); setPoUploadResult(null); }}
+                disabled={!poFile || isPoUploading}
+              >
+                Clear
+              </Button>
+              <Button
+                onClick={handlePoUpload}
+                disabled={!poFile || isPoUploading}
+                className="gap-2 bg-blue-600 hover:bg-blue-700"
+              >
+                {isPoUploading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  <div className="flex items-center gap-2 text-zinc-300">
+                    <UploadCloud className="w-4 h-4" />
+                    <span>Import Purchase Orders</span>
+                  </div>
+                )}
+              </Button>
+            </div>
+
+            {/* PROGRESS BAR */}
+            {isPoUploading && (
+              <div className="space-y-2 mt-4 p-4 rounded-xl border border-blue-100 bg-blue-50/50 dark:border-blue-900/50 dark:bg-blue-950/20">
+                <div className="flex justify-between text-sm font-medium text-blue-700 dark:text-blue-300">
+                  <span>{poProgressMessage}</span>
+                  <span>{poProgress}%</span>
+                </div>
+                <div className="w-full bg-blue-200/50 dark:bg-blue-900/40 rounded-full h-2.5 overflow-hidden">
+                  <div
+                    className="bg-blue-600 dark:bg-blue-500 h-2.5 rounded-full transition-all duration-500 ease-out"
+                    style={{ width: `${poProgress}%` }}
+                  ></div>
+                </div>
+              </div>
+            )}
+
+            {/* STATUS MESSAGES */}
+            {poUploadStatus === "success" && poUploadResult && (
+              <div className="p-4 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900 flex gap-3 items-start">
+                <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                <div>
+                  <h4 className="font-semibold text-emerald-800 dark:text-emerald-300">Import Successful</h4>
+                  <p className="text-sm text-emerald-700 dark:text-emerald-400/80 mt-1">
+                    {poUploadResult.message}. Imported {poUploadResult.pos_count} purchase orders.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {poUploadStatus === "error" && poUploadResult && (
+              <div className="p-4 rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 flex gap-3 items-start">
+                <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
+                <div>
+                  <h4 className="font-semibold text-red-800 dark:text-red-300">Import Failed</h4>
+                  <p className="text-sm text-red-700 dark:text-red-400/80 mt-1">
+                    {poUploadResult.message}
                   </p>
                 </div>
               </div>

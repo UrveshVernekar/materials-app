@@ -53,7 +53,7 @@ export function Sidebar() {
     },
     ...(user?.role === "admin" ? [
       {
-        name: "Register User",
+        name: "Manage Users",
         href: "/register",
         icon: Users,
       },

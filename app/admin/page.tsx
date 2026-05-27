@@ -588,13 +588,13 @@ export default function AdminPage() {
               {...getAlternativeRootProps()}
               className={cn(
                 "border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center text-center cursor-pointer transition-colors",
-                isPoDragActive ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20" : "border-border hover:border-blue-400 hover:bg-muted/50",
-                poFile && "border-blue-500 bg-blue-50/50 dark:bg-blue-900/10"
+                isAlternativeDragActive ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20" : "border-border hover:border-blue-400 hover:bg-muted/50",
+                AlternativeFile && "border-blue-500 bg-blue-50/50 dark:bg-blue-900/10"
               )}
             >
               <input {...getAlternativeInputProps()} />
 
-              {poFile ? (
+              {AlternativeFile ? (
                 <div className="flex flex-col items-center gap-3">
                   <div className="w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
                     <FileSpreadsheet className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
@@ -625,7 +625,7 @@ export default function AdminPage() {
               <Button
                 variant="outline"
                 onClick={() => { setAlternativeFile(null); setAlternativeUploadStatus("idle"); setAlternativeUploadResult(null); }}
-                disabled={!poFile || isPoUploading}
+                disabled={!AlternativeFile || isAlternativeUploading}
               >
                 Clear
               </Button>

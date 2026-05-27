@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { Sidebar } from "@/components/sidebar";
 import { Topbar } from "@/components/topbar";
@@ -12,6 +12,20 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
   const { loading, token } = useAuth();
   
   const isAuthPage = pathname === "/login" || pathname === "/register";
+
+  useEffect(() => {
+    if (token && !isAuthPage) {
+      document.documentElement.classList.add("overflow-hidden", "h-full");
+      document.body.classList.add("overflow-hidden", "h-full");
+    } else {
+      document.documentElement.classList.remove("overflow-hidden", "h-full");
+      document.body.classList.remove("overflow-hidden", "h-full");
+    }
+    return () => {
+      document.documentElement.classList.remove("overflow-hidden", "h-full");
+      document.body.classList.remove("overflow-hidden", "h-full");
+    };
+  }, [token, isAuthPage]);
 
   // While checking auth on initial mount, show a nice loading spinner
   if (loading) {

@@ -96,7 +96,7 @@ export default function ForecastPage() {
   const fetchMeta = async (search: string = "") => {
     try {
       const res = await axios.get<MetaResponse>(
-        "http://localhost:8000/api/spares/meta",
+        `${process.env.NEXT_PUBLIC_HOST_DEV}/api/spares/meta`,
         { params: { search } }
       );
       if (res.data.success) {
@@ -128,7 +128,7 @@ export default function ForecastPage() {
     setError(null);
     try {
       const response = await axios.get<ApiResponse>(
-        `http://localhost:8000/predictions/forecast/${material}`,
+        `${process.env.NEXT_PUBLIC_HOST_DEV}/predictions/forecast/${material}`,
         {
           params: {
             plant,

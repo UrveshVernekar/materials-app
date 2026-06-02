@@ -65,7 +65,7 @@ export default function InventoryDistributionPage() {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const res = await axios.get("http://localhost:8000/inventory/distribution");
+        const res = await axios.get(`${process.env.NEXT_PUBLIC_HOST_DEV}/inventory/distribution`);
 
         if (isMounted) {
           setKpis(res.data.kpis);

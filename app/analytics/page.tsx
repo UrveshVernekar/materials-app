@@ -51,7 +51,7 @@ export default function AnalyticsPage() {
       try {
         setLoading(true);
         const params = debouncedSearch ? { material_code: debouncedSearch } : {};
-        const res = await axios.get("http://localhost:8000/analytics/monthly-trend", {
+        const res = await axios.get(`${process.env.NEXT_PUBLIC_HOST_DEV}/analytics/monthly-trend`, {
           params,
         });
 

@@ -65,7 +65,7 @@ export default function AgingPage() {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const res = await axios.get("http://localhost:8000/inventory/aging");
+        const res = await axios.get(`${process.env.NEXT_PUBLIC_HOST_DEV}/inventory/aging`);
 
         if (isMounted) {
           setKpis(res.data.kpis);

@@ -93,7 +93,7 @@ export default function PoolDashboard() {
     const fetchData = async () => {
       try {
         const res = await axios.get(
-          "http://localhost:8000/api/spares/pool-data",
+          `${process.env.NEXT_PUBLIC_HOST_DEV}/api/spares/pool-data`,
         );
         if (res.data.success) {
           setPoolApiData(res.data.data);

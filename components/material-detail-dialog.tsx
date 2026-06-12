@@ -36,6 +36,12 @@ export function MaterialDetailDialog({
   const [loadingTrend, setLoadingTrend] = useState(false);
   const [trendError, setTrendError] = useState("");
 
+  // Remarks State
+  const [remarks, setRemarks] = useState("");
+  const [isSavingRemarks, setIsSavingRemarks] = useState(false);
+  const [remarksError, setRemarksError] = useState("");
+  const [remarksSuccess, setRemarksSuccess] = useState("");
+
   const predictionMonthNames = useMemo(() => {
     if (selectedMaterial && selectedMaterial.month1_date) {
       const formatDateStr = (dateStr: string) => {
@@ -120,6 +126,9 @@ export function MaterialDetailDialog({
       setFormError("");
       setFormSuccess("");
       setTrendMonths(12);
+      setRemarks("");
+      setRemarksError("");
+      setRemarksSuccess("");
       return;
     }
     setActiveTab("overview");
@@ -128,6 +137,9 @@ export function MaterialDetailDialog({
     setFormError("");
     setFormSuccess("");
     setTrendMonths(12);
+    setRemarks(selectedMaterial.remarks || "");
+    setRemarksError("");
+    setRemarksSuccess("");
   }, [selectedMaterial]);
 
   // Fetch consumption trend data based on selected range
@@ -288,6 +300,26 @@ export function MaterialDetailDialog({
       } else {
         setFormError("An error occurred. Please try again.");
       }
+    }
+  };
+
+  const handleSaveRemarks = async () => {
+    if (!selectedMaterial) return;
+    try {
+      setIsSavingRemarks(true);
+      setRemarksError("");
+      setRemarksSuccess("");
+      await api.post("/dashboard/remarks", {
+        material_code: selectedMaterial.material_code,
+        remarks: remarks.trim(),
+      });
+      setRemarksSuccess("Remarks saved successfully!");
+      onPOAddedOrUpdated?.();
+      setTimeout(() => setRemarksSuccess(""), 3000);
+    } catch (err) {
+      setRemarksError("Failed to save remarks.");
+    } finally {
+      setIsSavingRemarks(false);
     }
   };
 
@@ -495,6 +527,44 @@ export function MaterialDetailDialog({
                       {selectedMaterial.month3_prediction_days ? `${selectedMaterial.month3_prediction_days.toFixed(0)}d` : "0d"}
                     </div>
                   )}
+                </div>
+              </div>
+
+              {/* REMARKS CARD */}
+              <div className="bg-muted/10 border border-border/70 rounded-xl p-3.5 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
+                    Material Remarks
+                  </label>
+                  {remarksSuccess && (
+                    <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 animate-in fade-in duration-200">
+                      {remarksSuccess}
+                    </span>
+                  )}
+                  {remarksError && (
+                    <span className="text-[10px] font-semibold text-destructive animate-in fade-in duration-200">
+                      {remarksError}
+                    </span>
+                  )}
+                </div>
+                <textarea
+                  value={remarks}
+                  onChange={(e) => setRemarks(e.target.value)}
+                  placeholder="Enter notes or remarks for this material..."
+                  className="w-full h-20 rounded-lg border border-input bg-background p-2.5 text-xs shadow-xs focus-visible:outline-hidden focus:border-primary focus:ring-1 focus:ring-primary/20 resize-none text-foreground"
+                />
+                <div className="flex justify-end">
+                  <Button
+                    onClick={handleSaveRemarks}
+                    disabled={isSavingRemarks || remarks.trim() === (selectedMaterial.remarks || "")}
+                    size="sm"
+                    className="h-7 text-xs px-3.5 cursor-pointer font-semibold"
+                  >
+                    {isSavingRemarks ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />
+                    ) : null}
+                    Save Remarks
+                  </Button>
                 </div>
               </div>
 

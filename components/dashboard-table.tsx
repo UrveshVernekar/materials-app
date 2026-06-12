@@ -334,6 +334,7 @@ export function DashboardTable({
     material_code: 140,
     material_description: 220,
     vendor: 120,
+    remarks: 180,
     machine_population: 170,
     current_stock: 110,
     coverage_days: 140,
@@ -430,6 +431,7 @@ export function DashboardTable({
       { id: "material_code", label: "Material Code" },
       { id: "material_description", label: "Description" },
       { id: "vendor", label: "Vendor" },
+      { id: "remarks", label: "Remarks" },
       { id: "current_stock", label: "GPC Stk." },
       { id: "coverage_days", label: "Coverage Days" },
       { id: "product_category", label: "Category" },
@@ -1038,6 +1040,7 @@ export function DashboardTable({
           Category: item.product_category,
           Description: item.material_description,
           Vendor: item.vendor,
+          Remarks: item.remarks,
           "Machine Population": item.machine_population,
           "GPC Stk.": item.current_stock,
           "Coverage (Days)": item.coverage_days,
@@ -1302,6 +1305,7 @@ export function DashboardTable({
                 {renderHeader("product_category", "Category")}
                 {renderHeader("material_description", "Description")}
                 {renderHeader("vendor", "Vendor")}
+                {renderHeader("remarks", "Remarks")}
                 {/* {renderHeader("machine_population", "Machine Population", "right")} */}
                 {renderHeader("current_stock", "GPC Stk.", "right")}
                 {renderHeader("coverage_days", "Coverage Days", "right")}
@@ -1495,6 +1499,11 @@ export function DashboardTable({
                       {!hiddenColumns.includes("vendor") && (
                         <TableCell className="truncate" title={item.vendor}>
                           {item.vendor}
+                        </TableCell>
+                      )}
+                      {!hiddenColumns.includes("remarks") && (
+                        <TableCell className="text-muted-foreground truncate" title={item.remarks}>
+                          {item.remarks || "—"}
                         </TableCell>
                       )}
                       {!hiddenColumns.includes("current_stock") && (

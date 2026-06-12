@@ -46,6 +46,7 @@ export type Item = {
   month3_date?: string;
   is_checked?: boolean;
   checks?: UserCheckDetail[];
+  remarks?: string;
   actual_month1_po?: number | null;
   actual_month1_mes?: number | null;
   actual_month1_mes_days?: number | null;

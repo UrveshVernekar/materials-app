@@ -1033,6 +1033,7 @@ export function DashboardTable({
 
       const data = (filteredItems as EnrichedItem[]).map((item) => {
         const rowData: Record<string, string | number | null | undefined> = {
+          Checked: (item.is_checked || item.checks?.some((c) => c.is_checked)) ? "Yes" : "No",
           "Material Code": item.material_code,
           Category: item.product_category,
           Description: item.material_description,

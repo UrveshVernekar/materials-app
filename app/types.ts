@@ -21,6 +21,7 @@ export type Item = {
   product_category?: string;
   lead_time: number;
   lead_time_qty?: number;
+  pending_reorders?: number;
   delta: number;
   total_lead_time: number;
   month1_prediction?: number;

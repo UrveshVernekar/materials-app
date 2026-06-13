@@ -416,6 +416,15 @@ export function MaterialDetailDialog({
                   </span>
                 </div>
                 <div className="flex justify-between items-center text-xs">
+                  <span className="text-muted-foreground font-medium">Pending Reorders</span>
+                  <span className="font-semibold text-foreground">
+                    {selectedMaterial.pending_reorders?.toLocaleString(undefined, {
+                      minimumFractionDigits: 1,
+                      maximumFractionDigits: 1,
+                    }) || "0.0"} units
+                  </span>
+                </div>
+                <div className="flex justify-between items-center text-xs">
                   <span className="text-muted-foreground font-medium">Unit Price</span>
                   <span className="font-semibold text-foreground">
                     ₹{selectedMaterial.price?.toFixed(2) || "0.00"}

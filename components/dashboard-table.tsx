@@ -341,6 +341,7 @@ export function DashboardTable({
     product_category: 100,
     lead_time: 110,
     lead_time_qty: 100,
+    pending_reorders: 140,
     delta: 95,
     total_lead_time: 130,
     three_m_avg: 110,
@@ -437,6 +438,7 @@ export function DashboardTable({
       { id: "product_category", label: "Category" },
       { id: "lead_time", label: "Lead Time" },
       { id: "lead_time_qty", label: "LT Qty." },
+      { id: "pending_reorders", label: "Pending Reorders" },
       { id: "twelve_m_avg", label: "12M Avg" },
       { id: "price", label: "Price" },
       { id: "status", label: "Status" },
@@ -1046,6 +1048,7 @@ export function DashboardTable({
           "Coverage (Days)": item.coverage_days,
           "Lead Time": item.lead_time,
           "LT Qty.": item.lead_time_qty,
+          "Pending Reorders": item.pending_reorders,
           Delta: item.delta,
           "Total Lead Time": item.total_lead_time,
           "3M Avg": item.three_m_avg,
@@ -1311,6 +1314,7 @@ export function DashboardTable({
                 {renderHeader("coverage_days", "Coverage Days", "right")}
                 {renderHeader("lead_time", "Lead Time", "right")}
                 {renderHeader("lead_time_qty", "LT Qty.", "right")}
+                {renderHeader("pending_reorders", "Pending Reorders", "right")}
                 {/* {renderHeader("delta", "Delta", "right")} */}
                 {/* {renderHeader("total_lead_time", "Total Lead Time", "right")} */}
                 {/* {renderHeader("three_m_avg", "3M Avg", "right")} */}
@@ -1526,6 +1530,11 @@ export function DashboardTable({
                       {!hiddenColumns.includes("lead_time_qty") && (
                         <TableCell className="text-center font-medium truncate">
                           {item.lead_time_qty?.toFixed(0) || "-"}
+                        </TableCell>
+                      )}
+                      {!hiddenColumns.includes("pending_reorders") && (
+                        <TableCell className="text-center font-medium truncate">
+                          {item.pending_reorders?.toFixed(0) || "0"}
                         </TableCell>
                       )}
                       {!hiddenColumns.includes("twelve_m_avg") && (

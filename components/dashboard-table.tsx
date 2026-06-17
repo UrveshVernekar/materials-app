@@ -357,6 +357,7 @@ export function DashboardTable({
     month3_prediction: 100,
     month3_po: 100,
     month3_mes: 100,
+    alternative_parts: 150,
   });
 
   const predictionMonthNames = useMemo(() => {
@@ -433,6 +434,7 @@ export function DashboardTable({
       { id: "material_description", label: "Description" },
       { id: "vendor", label: "Vendor" },
       { id: "remarks", label: "Remarks" },
+      { id: "alternative_parts", label: "Alternative Parts" },
       { id: "current_stock", label: "GPC Stk." },
       { id: "coverage_days", label: "Coverage Days" },
       { id: "product_category", label: "Category" },
@@ -1050,6 +1052,7 @@ export function DashboardTable({
           Description: item.material_description,
           Vendor: item.vendor,
           Remarks: item.remarks,
+          "Alternative Parts": item.alternative_parts?.map(a => a.part_code).join(", ") || "",
           "Machine Population": floorVal(item.machine_population),
           "GPC Stk.": floorVal(item.current_stock),
           "Coverage (Days)": floorVal(item.coverage_days),
@@ -1316,6 +1319,7 @@ export function DashboardTable({
                 {renderHeader("material_description", "Description")}
                 {renderHeader("vendor", "Vendor")}
                 {renderHeader("remarks", "Remarks")}
+                {renderHeader("alternative_parts", "Alt. Parts")}
                 {/* {renderHeader("machine_population", "Machine Population", "right")} */}
                 {renderHeader("current_stock", "GPC Stk.", "right")}
                 {renderHeader("coverage_days", "Coverage Days", "right")}
@@ -1515,6 +1519,26 @@ export function DashboardTable({
                       {!hiddenColumns.includes("remarks") && (
                         <TableCell className="text-muted-foreground truncate" title={item.remarks}>
                           {item.remarks || "—"}
+                        </TableCell>
+                      )}
+                      {!hiddenColumns.includes("alternative_parts") && (
+                        <TableCell className="truncate text-xs py-2 px-2">
+                          {item.alternative_parts && item.alternative_parts.length > 0 ? (
+                            <div className="flex flex-wrap gap-1 max-w-full">
+                              {item.alternative_parts.map((alt) => (
+                                <Badge
+                                  key={alt.part_code}
+                                  variant="outline"
+                                  className="text-[10px] py-0 px-1 border-muted-foreground/30 font-medium truncate max-w-[120px]"
+                                  title={`${alt.part_code}: ${alt.part_description}`}
+                                >
+                                  {alt.part_code}
+                                </Badge>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground/60">—</span>
+                          )}
                         </TableCell>
                       )}
                       {!hiddenColumns.includes("current_stock") && (

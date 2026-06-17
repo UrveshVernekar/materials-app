@@ -1,3 +1,8 @@
+export type AlternativePart = {
+  part_code: string;
+  part_description: string;
+};
+
 export type UserCheckDetail = {
   email: string;
   first_name: string;
@@ -57,6 +62,7 @@ export type Item = {
   actual_month3_po?: number | null;
   actual_month3_mes?: number | null;
   actual_month3_mes_days?: number | null;
+  alternative_parts?: AlternativePart[];
 };
 
 export type TrendData = {

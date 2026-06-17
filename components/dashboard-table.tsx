@@ -1035,6 +1035,13 @@ export function DashboardTable({
     try {
       setIsExporting(true);
 
+      const floorVal = (val: any) => {
+        if (typeof val === "number" && !isNaN(val)) {
+          return Math.floor(val);
+        }
+        return val;
+      };
+
       const data = (filteredItems as EnrichedItem[]).map((item) => {
         const rowData: Record<string, string | number | null | undefined> = {
           Checked: (item.is_checked || item.checks?.some((c) => c.is_checked)) ? "Yes" : "No",
@@ -1043,16 +1050,16 @@ export function DashboardTable({
           Description: item.material_description,
           Vendor: item.vendor,
           Remarks: item.remarks,
-          "Machine Population": item.machine_population,
-          "GPC Stk.": item.current_stock,
-          "Coverage (Days)": item.coverage_days,
-          "Lead Time": item.lead_time,
-          "LT Qty.": item.lead_time_qty,
-          "Pending Reorders": item.pending_reorders,
-          Delta: item.delta,
-          "Total Lead Time": item.total_lead_time,
-          "3M Avg": item.three_m_avg,
-          "12M Avg": item.twelve_m_avg,
+          "Machine Population": floorVal(item.machine_population),
+          "GPC Stk.": floorVal(item.current_stock),
+          "Coverage (Days)": floorVal(item.coverage_days),
+          "Lead Time": floorVal(item.lead_time),
+          "LT Qty.": floorVal(item.lead_time_qty),
+          "Pending Reorders": floorVal(item.pending_reorders),
+          Delta: floorVal(item.delta),
+          "Total Lead Time": floorVal(item.total_lead_time),
+          "3M Avg": floorVal(item.three_m_avg),
+          "12M Avg": floorVal(item.twelve_m_avg),
           "Unit Price": item.price,
           Status: item.status,
         };
@@ -1060,49 +1067,49 @@ export function DashboardTable({
         rowData[predictionMonthNames[0]] =
           item.month1_prediction !== null &&
             item.month1_prediction !== undefined
-            ? item.month1_prediction
+            ? floorVal(item.month1_prediction)
             : "";
         rowData[`${predictionMonthNames[0]} (Days)`] =
           item.month1_prediction_days !== null &&
             item.month1_prediction_days !== undefined
-            ? item.month1_prediction_days
+            ? floorVal(item.month1_prediction_days)
             : "";
-        rowData[poMonthNames[0]] = item.month1_po;
-        rowData[`${poMonthNames[0]} (Days)`] = item.month1_po_days;
-        rowData[mesMonthNames[0]] = item.month1_mes;
-        rowData[`${mesMonthNames[0]} (Days)`] = item.month1_mes_days;
+        rowData[poMonthNames[0]] = floorVal(item.month1_po);
+        rowData[`${poMonthNames[0]} (Days)`] = floorVal(item.month1_po_days);
+        rowData[mesMonthNames[0]] = floorVal(item.month1_mes);
+        rowData[`${mesMonthNames[0]} (Days)`] = floorVal(item.month1_mes_days);
 
         // Month 2
         rowData[predictionMonthNames[1]] =
           item.month2_prediction !== null &&
             item.month2_prediction !== undefined
-            ? item.month2_prediction
+            ? floorVal(item.month2_prediction)
             : "";
         rowData[`${predictionMonthNames[1]} (Days)`] =
           item.month2_prediction_days !== null &&
             item.month2_prediction_days !== undefined
-            ? item.month2_prediction_days
+            ? floorVal(item.month2_prediction_days)
             : "";
-        rowData[poMonthNames[1]] = item.month2_po;
-        rowData[`${poMonthNames[1]} (Days)`] = item.month2_po_days;
-        rowData[mesMonthNames[1]] = item.month2_mes;
-        rowData[`${mesMonthNames[1]} (Days)`] = item.month2_mes_days;
+        rowData[poMonthNames[1]] = floorVal(item.month2_po);
+        rowData[`${poMonthNames[1]} (Days)`] = floorVal(item.month2_po_days);
+        rowData[mesMonthNames[1]] = floorVal(item.month2_mes);
+        rowData[`${mesMonthNames[1]} (Days)`] = floorVal(item.month2_mes_days);
 
         // Month 3
         rowData[predictionMonthNames[2]] =
           item.month3_prediction !== null &&
             item.month3_prediction !== undefined
-            ? item.month3_prediction
+            ? floorVal(item.month3_prediction)
             : "";
         rowData[`${predictionMonthNames[2]} (Days)`] =
           item.month3_prediction_days !== null &&
             item.month3_prediction_days !== undefined
-            ? item.month3_prediction_days
+            ? floorVal(item.month3_prediction_days)
             : "";
-        rowData[poMonthNames[2]] = item.month3_po;
-        rowData[`${poMonthNames[2]} (Days)`] = item.month3_po_days;
-        rowData[mesMonthNames[2]] = item.month3_mes;
-        rowData[`${mesMonthNames[2]} (Days)`] = item.month3_mes_days;
+        rowData[poMonthNames[2]] = floorVal(item.month3_po);
+        rowData[`${poMonthNames[2]} (Days)`] = floorVal(item.month3_po_days);
+        rowData[mesMonthNames[2]] = floorVal(item.month3_mes);
+        rowData[`${mesMonthNames[2]} (Days)`] = floorVal(item.month3_mes_days);
 
         return rowData;
       });

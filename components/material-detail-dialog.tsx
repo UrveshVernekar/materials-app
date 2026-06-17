@@ -577,6 +577,25 @@ export function MaterialDetailDialog({
                 </div>
               </div>
 
+              {/* ALTERNATIVE PARTS CARD */}
+              {selectedMaterial.alternative_parts && selectedMaterial.alternative_parts.length > 0 && (
+                <div className="bg-muted/10 border border-border/70 rounded-xl p-3.5 space-y-2.5">
+                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
+                    Alternative Parts
+                  </label>
+                  <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                    {selectedMaterial.alternative_parts.map((alt) => (
+                      <div key={alt.part_code} className="flex flex-col text-xs p-2 rounded-lg bg-background border border-border/60">
+                        <span className="font-semibold text-foreground">{alt.part_code}</span>
+                        <span className="text-[10px] text-muted-foreground line-clamp-1" title={alt.part_description}>
+                          {alt.part_description}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
             </div>
 
             {/* RIGHT COLUMN: DETAILED TABS */}

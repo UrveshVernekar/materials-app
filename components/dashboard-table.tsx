@@ -332,6 +332,7 @@ export function DashboardTable({
     is_checked: 110,
     selection: 48,
     material_code: 140,
+    part_type: 120,
     material_description: 220,
     vendor: 120,
     remarks: 180,
@@ -431,6 +432,7 @@ export function DashboardTable({
     () => [
       { id: "is_checked", label: "Checked" },
       { id: "material_code", label: "Material Code" },
+      { id: "part_type", label: "Part Type" },
       { id: "material_description", label: "Description" },
       { id: "vendor", label: "Vendor" },
       { id: "remarks", label: "Remarks" },
@@ -536,6 +538,27 @@ export function DashboardTable({
                 {status}
               </SelectItem>
             ))}
+          </SelectContent>
+        </Select>
+      );
+    }
+
+    if (key === "part_type") {
+      return (
+        <Select
+          value={filters.part_type || "all"}
+          onValueChange={(val) =>
+            handleFilterChange("part_type", val === "all" ? "" : val)
+          }
+        >
+          <SelectTrigger className="h-7 text-[11px] px-2 bg-background border border-muted-foreground/20 font-normal w-full shadow-none focus:ring-1 focus:ring-blue-500 rounded">
+            <SelectValue placeholder="All" />
+          </SelectTrigger>
+          <SelectContent className="bg-background border border-border">
+            <SelectItem value="all">All</SelectItem>
+            <SelectItem value="Master">Master</SelectItem>
+            <SelectItem value="Substitute">Substitute</SelectItem>
+            <SelectItem value="Independent">Independent</SelectItem>
           </SelectContent>
         </Select>
       );
@@ -967,6 +990,8 @@ export function DashboardTable({
         } else if (filterVal === "unchecked") {
           result = result.filter((item) => item.is_checked === false);
         }
+      } else if (key === "part_type") {
+        result = result.filter((item) => item.part_type === filterVal);
       } else if (key === "status") {
         result = result.filter((item) => item.status === filterVal);
       } else if (key === "product_category") {
@@ -1048,6 +1073,7 @@ export function DashboardTable({
         const rowData: Record<string, string | number | null | undefined> = {
           Checked: (item.is_checked || item.checks?.some((c) => c.is_checked)) ? "Yes" : "No",
           "Material Code": item.material_code,
+          "Part Type": item.part_type || "Independent",
           Category: item.product_category,
           Description: item.material_description,
           Vendor: item.vendor,
@@ -1183,6 +1209,23 @@ export function DashboardTable({
               ))}
             </SelectContent>
           </Select>
+
+          <Select
+            value={filters.part_type || "all"}
+            onValueChange={(val) => {
+              handleFilterChange("part_type", val === "all" ? "" : val);
+            }}
+          >
+            <SelectTrigger className="w-full sm:w-[160px] h-10 bg-background shadow-sm">
+              <SelectValue placeholder="All Part Types" />
+            </SelectTrigger>
+            <SelectContent className="bg-background border border-border">
+              <SelectItem value="all">All Part Types</SelectItem>
+              <SelectItem value="Master">Master Parts</SelectItem>
+              <SelectItem value="Substitute">Substitute Parts</SelectItem>
+              <SelectItem value="Independent">Independent Parts</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="flex items-center gap-3 text-sm">
@@ -1315,6 +1358,7 @@ export function DashboardTable({
               <TableRow>
                 {renderHeader("is_checked", "Checked", "center")}
                 {renderHeader("material_code", "Material Code")}
+                {renderHeader("part_type", "Part Type")}
                 {renderHeader("product_category", "Category")}
                 {renderHeader("material_description", "Description")}
                 {renderHeader("vendor", "Vendor")}
@@ -1493,6 +1537,24 @@ export function DashboardTable({
                       {!hiddenColumns.includes("material_code") && (
                         <TableCell className="font-medium truncate">
                           {item.material_code}
+                        </TableCell>
+                      )}
+                      {!hiddenColumns.includes("part_type") && (
+                        <TableCell className="truncate align-middle">
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              "font-semibold text-[10px]",
+                              item.part_type === "Master" &&
+                              "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-800",
+                              item.part_type === "Substitute" &&
+                              "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-800",
+                              item.part_type === "Independent" &&
+                              "bg-gray-50 text-gray-600 border-gray-200 dark:bg-zinc-800 dark:text-zinc-400 dark:border-zinc-700",
+                            )}
+                          >
+                            {item.part_type}
+                          </Badge>
                         </TableCell>
                       )}
                       {!hiddenColumns.includes("product_category") && (

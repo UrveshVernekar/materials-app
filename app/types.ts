@@ -63,6 +63,7 @@ export type Item = {
   actual_month3_mes?: number | null;
   actual_month3_mes_days?: number | null;
   alternative_parts?: AlternativePart[];
+  part_type?: string;
 };
 
 export type TrendData = {

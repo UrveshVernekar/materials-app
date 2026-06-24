@@ -1005,9 +1005,25 @@ export function DashboardTable({
           matchStringFilter(item[key as keyof Item] as string, filterVal),
         );
       } else {
+        let filterKey = key;
+        if (viewMode === "days") {
+          if (
+            key === "month1_prediction" ||
+            key === "month2_prediction" ||
+            key === "month3_prediction" ||
+            key === "month1_po" ||
+            key === "month2_po" ||
+            key === "month3_po" ||
+            key === "month1_mes" ||
+            key === "month2_mes" ||
+            key === "month3_mes"
+          ) {
+            filterKey = `${key}_days`;
+          }
+        }
         result = result.filter((item) =>
           matchNumericFilter(
-            item[key as keyof typeof item] as number,
+            item[filterKey as keyof typeof item] as number,
             filterVal,
           ),
         );
@@ -1021,13 +1037,29 @@ export function DashboardTable({
     }
 
     return result;
-  }, [enrichedItems, debouncedSearch, filters, selectedFilterUsers, user]);
+  }, [enrichedItems, debouncedSearch, filters, selectedFilterUsers, user, viewMode]);
 
   const sortedItems = useMemo(() => {
     if (!sortConfig.key || !sortConfig.direction) return filteredItems;
 
-    const key = sortConfig.key;
+    let key = sortConfig.key;
     const direction = sortConfig.direction;
+
+    if (viewMode === "days") {
+      if (
+        key === "month1_prediction" ||
+        key === "month2_prediction" ||
+        key === "month3_prediction" ||
+        key === "month1_po" ||
+        key === "month2_po" ||
+        key === "month3_po" ||
+        key === "month1_mes" ||
+        key === "month2_mes" ||
+        key === "month3_mes"
+      ) {
+        key = `${key}_days`;
+      }
+    }
 
     return [...filteredItems].sort((a, b) => {
       let aVal = a[key as keyof typeof a];
@@ -1047,7 +1079,7 @@ export function DashboardTable({
       if (aStr > bStr) return direction === "asc" ? 1 : -1;
       return 0;
     });
-  }, [filteredItems, sortConfig]);
+  }, [filteredItems, sortConfig, viewMode]);
 
   const items = useMemo(() => {
     const size = Number(pageSize);

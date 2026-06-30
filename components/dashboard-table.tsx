@@ -831,26 +831,13 @@ export function DashboardTable({
 
   const enrichedItems = useMemo(() => {
     return allItems.map((item) => {
-      // Calculate coverage days safely
-      let computedCoverage = 0;
-      if (item.twelve_m_avg && item.twelve_m_avg > 0) {
-        const val = (item.current_stock / item.twelve_m_avg) * 30;
-        if (isFinite(val) && !isNaN(val)) {
-          computedCoverage = val;
-        } else {
-          computedCoverage = item.current_stock > 0 ? 999999 : 0;
-        }
-      } else {
-        computedCoverage = item.current_stock > 0 ? 999999 : 0;
-      }
-
       const localOverride = localChecks[item.material_code];
       const isChecked = localOverride !== undefined ? localOverride.is_checked : (item.is_checked ?? false);
       const checks = localOverride !== undefined ? localOverride.checks : (item.checks ?? []);
 
       return {
         ...item,
-        coverage_days: computedCoverage,
+        coverage_days: item.coverage_days ?? 0,
         is_checked: isChecked,
         checks: checks,
         month1_po: item.month1_po || 0,

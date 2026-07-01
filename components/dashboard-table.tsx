@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import * as XLSX from "xlsx";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -36,7 +36,11 @@ import {
   Filter,
   X,
   ChevronDown,
-  RefreshCw
+  RefreshCw,
+  AlertTriangle,
+  AlertCircle,
+  ShieldAlert,
+  CheckCircle2
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -71,6 +75,7 @@ export interface EnrichedItem extends Item {
   month3_prediction_days: number;
   month3_po_days: number;
   month3_mes_days: number;
+  criticality: "Hyper Critical" | "Critical" | "Low Stock" | "Normal";
 }
 
 const getAvatarGradient = (email: string) => {
@@ -90,6 +95,13 @@ const getAvatarGradient = (email: string) => {
   }
   const index = Math.abs(hash) % gradients.length;
   return gradients[index];
+};
+
+const getCriticality = (coverageDays: number): "Hyper Critical" | "Critical" | "Low Stock" | "Normal" => {
+  if (coverageDays < 10) return "Hyper Critical";
+  if (coverageDays < 20) return "Critical";
+  if (coverageDays < 25) return "Low Stock";
+  return "Normal";
 };
 
 interface DashboardTableProps {
@@ -339,6 +351,7 @@ export function DashboardTable({
     machine_population: 170,
     current_stock: 110,
     coverage_days: 140,
+    criticality: 130,
     product_category: 100,
     lead_time: 110,
     lead_time_qty: 100,
@@ -439,6 +452,7 @@ export function DashboardTable({
       { id: "alternative_parts", label: "Alternative Parts" },
       { id: "current_stock", label: "GPC Stk." },
       { id: "coverage_days", label: "Coverage Days" },
+      { id: "criticality", label: "Criticality" },
       { id: "product_category", label: "Category" },
       { id: "lead_time", label: "Lead Time" },
       { id: "lead_time_qty", label: "LT Qty." },
@@ -674,6 +688,28 @@ export function DashboardTable({
       );
     }
 
+    if (key === "criticality") {
+      return (
+        <Select
+          value={filters.criticality || "all"}
+          onValueChange={(val) =>
+            handleFilterChange("criticality", val === "all" ? "" : val)
+          }
+        >
+          <SelectTrigger className="h-7 text-[11px] px-2 bg-background border border-muted-foreground/20 font-normal w-full shadow-none focus:ring-1 focus:ring-blue-500 rounded">
+            <SelectValue placeholder="All" />
+          </SelectTrigger>
+          <SelectContent className="bg-background border border-border">
+            <SelectItem value="all">All</SelectItem>
+            <SelectItem value="Hyper Critical">Hyper Critical</SelectItem>
+            <SelectItem value="Critical">Critical</SelectItem>
+            <SelectItem value="Low Stock">Low Stock</SelectItem>
+            <SelectItem value="Normal">Normal</SelectItem>
+          </SelectContent>
+        </Select>
+      );
+    }
+
     const isNumericKey = ![
       "is_checked",
       "material_code",
@@ -681,6 +717,7 @@ export function DashboardTable({
       "vendor",
       "status",
       "product_category",
+      "criticality",
     ].includes(key);
 
     return (
@@ -835,9 +872,13 @@ export function DashboardTable({
       const isChecked = localOverride !== undefined ? localOverride.is_checked : (item.is_checked ?? false);
       const checks = localOverride !== undefined ? localOverride.checks : (item.checks ?? []);
 
+      const coverage_days = item.coverage_days ?? 0;
+      const criticality = getCriticality(coverage_days);
+
       return {
         ...item,
-        coverage_days: item.coverage_days ?? 0,
+        coverage_days: coverage_days,
+        criticality,
         is_checked: isChecked,
         checks: checks,
         month1_po: item.month1_po || 0,
@@ -983,6 +1024,8 @@ export function DashboardTable({
         result = result.filter((item) => item.status === filterVal);
       } else if (key === "product_category") {
         result = result.filter((item) => item.product_category === filterVal);
+      } else if (key === "criticality") {
+        result = result.filter((item) => item.criticality === filterVal);
       } else if (
         key === "material_code" ||
         key === "material_description" ||
@@ -1026,6 +1069,84 @@ export function DashboardTable({
     return result;
   }, [enrichedItems, debouncedSearch, filters, selectedFilterUsers, user, viewMode]);
 
+  const criticalityCounts = useMemo(() => {
+    let baseItems = enrichedItems;
+    if (debouncedSearch) {
+      const lower = debouncedSearch.toLowerCase();
+      baseItems = baseItems.filter(
+        (item) =>
+          item.material_code?.toLowerCase().includes(lower) ||
+          item.material_description?.toLowerCase().includes(lower) ||
+          item.vendor?.toLowerCase().includes(lower)
+      );
+    }
+    Object.entries(filters).forEach(([key, filterVal]) => {
+      if (!filterVal || key === "criticality") return;
+
+      if (key === "is_checked") {
+        if (filterVal === "checked") {
+          baseItems = baseItems.filter((item) => item.is_checked === true);
+        } else if (filterVal === "unchecked") {
+          baseItems = baseItems.filter((item) => item.is_checked === false);
+        }
+      } else if (key === "part_type") {
+        baseItems = baseItems.filter((item) => item.part_type === filterVal);
+      } else if (key === "status") {
+        baseItems = baseItems.filter((item) => item.status === filterVal);
+      } else if (key === "product_category") {
+        baseItems = baseItems.filter((item) => item.product_category === filterVal);
+      } else if (
+        key === "material_code" ||
+        key === "material_description" ||
+        key === "vendor"
+      ) {
+        baseItems = baseItems.filter((item) =>
+          matchStringFilter(item[key as keyof Item] as string, filterVal),
+        );
+      } else {
+        let filterKey = key;
+        if (viewMode === "days") {
+          if (
+            key === "month1_prediction" ||
+            key === "month2_prediction" ||
+            key === "month3_prediction" ||
+            key === "month1_po" ||
+            key === "month2_po" ||
+            key === "month3_po" ||
+            key === "month1_mes" ||
+            key === "month2_mes" ||
+            key === "month3_mes"
+          ) {
+            filterKey = `${key}_days`;
+          }
+        }
+        baseItems = baseItems.filter((item) =>
+          matchNumericFilter(
+            item[filterKey as keyof typeof item] as number,
+            filterVal,
+          ),
+        );
+      }
+    });
+
+    if (user?.role === "admin" && selectedFilterUsers.length > 0) {
+      baseItems = baseItems.filter((item) =>
+        item.checks?.some((c) => selectedFilterUsers.includes(c.email) && c.is_checked)
+      );
+    }
+
+    const counts = {
+      "Hyper Critical": 0,
+      "Critical": 0,
+      "Low Stock": 0,
+      "Normal": 0,
+    };
+    baseItems.forEach((item) => {
+      counts[item.criticality]++;
+    });
+    return counts;
+  }, [enrichedItems, debouncedSearch, filters, selectedFilterUsers, user, viewMode]);
+
   const sortedItems = useMemo(() => {
     if (!sortConfig.key || !sortConfig.direction) return filteredItems;
 
@@ -1046,6 +1167,20 @@ export function DashboardTable({
       ) {
         key = `${key}_days`;
       }
+    }
+
+    if (key === "criticality") {
+      const severityRank = {
+        "Hyper Critical": 1,
+        "Critical": 2,
+        "Low Stock": 3,
+        "Normal": 4,
+      };
+      return [...filteredItems].sort((a, b) => {
+        const aVal = severityRank[a.criticality] || 4;
+        const bVal = severityRank[b.criticality] || 4;
+        return direction === "asc" ? aVal - bVal : bVal - aVal;
+      });
     }
 
     return [...filteredItems].sort((a, b) => {
@@ -1101,6 +1236,7 @@ export function DashboardTable({
           "Machine Population": floorVal(item.machine_population),
           "GPC Stk.": floorVal(item.current_stock),
           "Coverage (Days)": floorVal(item.coverage_days),
+          Criticality: item.criticality,
           "Lead Time": floorVal(item.lead_time),
           "LT Qty.": floorVal(item.lead_time_qty),
           "Pending Reorders": floorVal(item.pending_reorders),
@@ -1177,6 +1313,107 @@ export function DashboardTable({
 
   return (
     <div className="space-y-6">
+      {/* CRITICALITY STAT CARDS */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          {
+            key: "Hyper Critical",
+            label: "Hyper Critical",
+            range: "< 10 Days",
+            count: criticalityCounts["Hyper Critical"],
+            icon: AlertTriangle,
+            colorClass: "text-rose-600 dark:text-rose-400",
+            activeBorder: "border-rose-500 dark:border-rose-500/80",
+            activeBg: "bg-rose-50/50 dark:bg-rose-950/20",
+            shadowClass: "shadow-rose-100 dark:shadow-rose-950/10",
+            hoverBorder: "hover:border-rose-300 dark:hover:border-rose-800",
+            indicatorBg: "bg-rose-600 dark:bg-rose-400",
+          },
+          {
+            key: "Critical",
+            label: "Critical",
+            range: "10 to 19 Days",
+            count: criticalityCounts["Critical"],
+            icon: AlertCircle,
+            colorClass: "text-orange-600 dark:text-orange-400",
+            activeBorder: "border-orange-500 dark:border-orange-500/80",
+            activeBg: "bg-orange-50/50 dark:bg-orange-950/20",
+            shadowClass: "shadow-orange-100 dark:shadow-orange-950/10",
+            hoverBorder: "hover:border-orange-300 dark:hover:border-orange-800",
+            indicatorBg: "bg-orange-600 dark:bg-orange-400",
+          },
+          {
+            key: "Low Stock",
+            label: "Low Stock",
+            range: "20 to 24 Days",
+            count: criticalityCounts["Low Stock"],
+            icon: ShieldAlert,
+            colorClass: "text-amber-600 dark:text-amber-500",
+            activeBorder: "border-amber-500 dark:border-amber-500/80",
+            activeBg: "bg-amber-50/50 dark:bg-amber-950/20",
+            shadowClass: "shadow-amber-100 dark:shadow-amber-950/10",
+            hoverBorder: "hover:border-amber-300 dark:hover:border-amber-800",
+            indicatorBg: "bg-amber-600 dark:bg-amber-500",
+          },
+          {
+            key: "Normal",
+            label: "Normal",
+            range: "≥ 25 Days",
+            count: criticalityCounts["Normal"],
+            icon: CheckCircle2,
+            colorClass: "text-emerald-600 dark:text-emerald-400",
+            activeBorder: "border-emerald-500 dark:border-emerald-500/80",
+            activeBg: "bg-emerald-50/50 dark:bg-emerald-950/20",
+            shadowClass: "shadow-emerald-100 dark:shadow-emerald-950/10",
+            hoverBorder: "hover:border-emerald-300 dark:hover:border-emerald-800",
+            indicatorBg: "bg-emerald-600 dark:bg-emerald-400",
+          },
+        ].map((card) => {
+          const isActive = filters.criticality === card.key;
+          const Icon = card.icon;
+          return (
+            <Card
+              key={card.key}
+              className={cn(
+                "relative overflow-hidden cursor-pointer border border-border/80 transition-all duration-300 hover:shadow-md transform hover:-translate-y-0.5",
+                isActive 
+                  ? cn(card.activeBorder, card.activeBg, "ring-1 ring-primary/10 shadow", card.shadowClass)
+                  : cn("bg-background/40 hover:bg-background/80", card.hoverBorder)
+              )}
+              onClick={() => {
+                if (isActive) {
+                  handleFilterChange("criticality", "");
+                } else {
+                  handleFilterChange("criticality", card.key);
+                }
+              }}
+            >
+              <CardContent className="p-5 flex items-center justify-between">
+                <div className="space-y-1">
+                  <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block">
+                    {card.label}
+                  </span>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-3xl font-bold tracking-tight text-foreground">
+                      {card.count}
+                    </span>
+                    <span className="text-xs text-muted-foreground font-medium">
+                      {card.range}
+                    </span>
+                  </div>
+                </div>
+                <div className={cn("p-3 rounded-full bg-muted/40 dark:bg-muted/10", card.colorClass)}>
+                  <Icon className="w-5 h-5" />
+                </div>
+              </CardContent>
+              {isActive && (
+                <div className={cn("absolute bottom-0 left-0 right-0 h-1", card.indicatorBg)} />
+              )}
+            </Card>
+          );
+        })}
+      </div>
+
       {/* TOOLBAR */}
       <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
         <div className="flex flex-wrap gap-3 items-center w-full sm:w-auto">
@@ -1386,6 +1623,7 @@ export function DashboardTable({
                 {/* {renderHeader("machine_population", "Machine Population", "right")} */}
                 {renderHeader("current_stock", "GPC Stk.", "right")}
                 {renderHeader("coverage_days", "Coverage Days", "right")}
+                {renderHeader("criticality", "Criticality", "center")}
                 {renderHeader("lead_time", "Lead Time", "right")}
                 {renderHeader("lead_time_qty", "LT Qty.", "right")}
                 {renderHeader("pending_reorders", "Pending Reorders", "right")}
@@ -1632,6 +1870,26 @@ export function DashboardTable({
                           {item.coverage_days >= 999999
                             ? "—"
                             : item.coverage_days.toFixed(0)}
+                        </TableCell>
+                      )}
+                      {!hiddenColumns.includes("criticality") && (
+                        <TableCell className="text-center truncate align-middle">
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              "font-semibold text-[10px]",
+                              item.criticality === "Hyper Critical" &&
+                              "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/20 dark:text-red-400 dark:border-red-800",
+                              item.criticality === "Critical" &&
+                              "bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950/20 dark:text-orange-400 dark:border-orange-800",
+                              item.criticality === "Low Stock" &&
+                              "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-800",
+                              item.criticality === "Normal" &&
+                              "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-800",
+                            )}
+                          >
+                            {item.criticality}
+                          </Badge>
                         </TableCell>
                       )}
                       {!hiddenColumns.includes("lead_time") && (
